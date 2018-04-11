@@ -1,0 +1,612 @@
+
+\documentclass{article}
+
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{Instructions for Spherical Code for Tomography and Regression}
+\author{Rhys Hawkins}
+
+\maketitle
+
+\section{Synopsis}
+
+The main programs of interest are for regression problems are {\tt
+  regressionvoronois2} and its parallel analog {\tt
+  regressionvoronois2pt}.  For linearized tomography problems the
+programs are {\tt tomographyvoronois2} and its parallel analog {\tt
+  tomographyvoronois2pt}.  These programs take data, prior, proposal
+and other arguments as command line inputs and output a Markov chain
+history and other log files.  The chain history files can be
+subsequently post processed by the tools {\tt
+  postS2Voronoi\_likelihood}, {\tt postS2Voronoi\_mean}, and {\tt
+  postS2Voronoi\_text} to generate images and other outputs.
+
+\section{Installation}
+
+This code is expected to be run on a Unix machine and requires the
+following packages to compile:
+
+\begin{itemize}
+\item GNU g++ Version 6.x or greater
+\item GNU fortran Version 6.x or greater
+\item GNU Make version 4.x or greater
+\item GNU Scientific Library (GSL) version 1 or 2
+\item OpenMPI version 1.10
+\end{itemize}
+
+
+
+On Terrawulf, this requires the following modules to be loaded:
+\begin{itemize}
+\item compiler/gnu/6.1.0
+\item openmpi/gnu/1.10.2
+\item gsl/1.16
+\end{itemize}
+
+It is also assumed that the TDTbase libraries are installed and
+compiled in the same top level directory as this codebase, for
+example, the directory structure is as follows
+
+\begin{itemize}
+\item ParentDirectory
+  \begin{itemize}
+  \item TDTbase
+  \item GeneralVoronoiS2
+  \end{itemize}
+\end{itemize}
+
+The source code with example scripts and data is called
+GeneralVoronoi.tar.gz and once the environment is properly
+configued, extraction and compilation can proceed as follows:
+
+\begin{verbatim}
+> tar -xzf GeneralVoronoi.tar.gz
+> cd GeneralVoronoi
+> make
+> make -C generalregressioncpp
+> make -C generaltomographycpp
+\end{verbatim}
+
+Optionally, there are fortran equivalent programs which are
+functionally equivalent to the C++ versions, these can
+be compiled using
+
+\begin{verbatim}
+> make -C generalregressionf
+> make -C generaltomographyf
+\end{verbatim}
+
+\section{Prior/Proposal Specification}
+
+\subsection{Values}
+
+A value prior and proposal is specified in a text file with a simple
+fixed format.  The format is:
+
+\begin{verbatim}
+prior <prior name>
+<prior parameters>
+proposal <proposal name>
+<proposal parameters>
+\end{verbatim}
+
+A common starting point for the prior and proposal is to use
+a Uniform prior with a Gaussian proposal. An example below shows
+a prior that could be used in a tomography problem where the model
+parameter represents velocity in km/s:
+
+\begin{verbatim}
+prior Uniform
+2.0 6.0
+proposal Gaussian
+1.0e-1
+\end{verbatim}
+
+The Uniform prior has two parameters that represent the bounds of
+the values, that is, values must be between 2.0 and 6.0 in the
+above example. The Gaussian proposal has a single parameter which
+is the standard deviation. Large standard deviations result in
+larger steps taken in the random walk and this value can be
+tuned to obtain more efficient sampling.
+
+\subsection{Position}
+
+The format for position prior/proposal is slightly different to prevent
+them from being inadvertently used as value prior/proposal. The format
+is 
+
+\begin{verbatim}
+sphericalprior <prior name>
+<prior parameters>
+sphericalproposal <proposal name>
+<proposal parameters>
+\end{verbatim}
+
+The prior will always be {\tt UniformSpherical} which has no parameters
+and the proposal will always be {\tt VonMisesSpherical} which has one
+parameter. An example is shown below:
+
+\begin{verbatim}
+sphericalprior UniformSpherical
+sphericalproposal VonMisesSpherical
+1.0e2
+\end{verbatim}
+
+The parameter for the {\tt VonMisesSpherical} proposal is the
+concentration parameter which is analogous to the inverse of the
+standard deviation, hence a value of 1.0e2 corresponds approximately
+to a standard deviation of approximately half a degree. As this
+parameter is the inversion of the standard deviation, it will need
+to be increased to improve acceptance rates if they are not satisfactory.
+
+\section{Running the programs}
+
+\subsection{Quick Example}
+
+This example doesn't do much, but as a quick test you can run
+
+\begin{verbatim}
+> cd generalregressioncpp/example
+> make
+> python ../../scripts/plot_image_ortho.py -f results_constant/mean.txt
+> python ../../scripts/plot_map.py -i results_constant/mean.txt
+\end{verbatim}
+
+The make command executes the instructions in the Makefile
+which first generates a synthetic dataset using a script
+and the mksynthetic program. An inversion is run for 50,000
+iterations with output saved to the {\tt results\_constant}
+subdirectory. Finally the post processing command is run to
+compute the mean and standard deviations.
+
+All output from the run is written to the {\tt results\_constant}. This
+includes a {\tt ch.dat} file, the chain history, {\tt acceptance.txt}, the statistics
+of the proposals, and a {\tt khistogram.txt} file.
+
+\subsection{Command Options}
+
+In the Makefile, you will see the {\tt regressionvoronois2} command in the second
+last block of commands. This program implements the {\tt --help} command line argument
+which describes possible parameters to the programs. We describe the
+important ones here, firstly for the two simulation programs {\tt regressionvoronois2}
+and {\tt regressionvoronois2pt}
+
+\begin{description}
+\item [-i$|$--input $<$filename$>$] The data to load (required)
+\item [-I$|$--initial $<$filename/path$>$] The initial model(s) to load. For the serial version,
+  this is a filename, for the parallel version, this is a path to where a previous parallel
+  program outputted its final models.
+\item [-o$|$--output $<$path$>$] The output prefix or path to write output files to. You must include
+  a trailing ``/'' if you want the files in a directory and the directory must exist before starting.
+\item [-P$|$--prior $<$filename$>$] Load a prior for the values from the given filename.
+\item [-M$|$--move-prior $<$filename$>$] Load a prior for the positions from the given filename.
+\item [-H$|$--hierarchical-prior $<$filename$>$] Load a prior for the hierarchical scaling parameter. If a
+  hierarchical prior is specified, then this enables hierarchical parameter estimation as part of the
+  sampling process.
+\item [-t$|$--total $<$int$>$] The total number of iterations to run for.
+\item [-v$|$--verbosity $<$int$>$] The number of iterations between logging the status of the simulation.
+\item [-l$|$--lambda $<$float$>$] The initial or fixed hierarchical scale parameter for the noise. The noise
+  model is independent Gaussian with a standard deviation of $\lambda \sigma_d$ where $\lambda$ is
+  the hierarchical scaling parameter and $\sigma_d$ is the noise specified in the input data file.
+\item [-T$|$--max-cells $<$int$>$] The maximum number of Voronoi cells.
+\end{description}
+
+For the parallel version, there is the extra parameter which controls how the multiple
+processes are used in the simulation:
+
+\begin{description}
+\item [-c$|$--chains $<$int$>$] The number of independent chains to run.
+\end{description}
+
+In a parallel run, you will have some number of processes and this can be divided up
+into multiple chains or (the default) you can run a single chain and use the
+multiple processes to speed up computation of the likelihood function. For example,
+the command:
+
+\begin{verbatim}
+mpirun -np 12 ./regressionvoronois2pt <misc. arguments> -c 3
+\end{verbatim}
+
+will run in parallel on 12 processes with 3 indepedent chains. Each of the chains
+will compute the likelihood using 4 parallel processes. It should be clear that
+the number of chains must be an integer factor of the number of processes.
+
+For the post processing programs, they all have some common command line arguments:
+
+\begin{description}
+\item[-i$|$--input $<$filename$>$] The input {\tt ch.dat} chain history file to process.
+\item[-i$|$--output $<$filename$>$] The output file (depends on which program as to what it is)
+\item[-t$|$--thin $<$int$>$] Only process every nth model. A value of 1 or 0 means process every
+  model in the chain.
+\item[-s$|$--skip $<$int$>$] Start processing after the nth model.
+\end{description}
+
+If hierarchical noise estimation is done, the {\tt postS2Voronoi\_likelihood} has an option
+to output the hierarchical parameter history as well:
+
+\begin{description}
+\item[-H$|$--hierarchical $<$filename$>$] Output the hierarchical history
+\end{description}
+
+The mean post processing command takes a number of extra arguments
+
+\begin{description}
+\item [-m$|$--median $<$filename$>$] Output the median model to the specified file. The median model is computed from the histogram.
+\item [-M$|$--mode $<$filename$>$] Output the modal model to the specified file. The median model is computed from the histogram.
+\item [-T$|$--stddev $<$filename$>$] Output the standard deviation of the ensemble to the specified file.
+\item [-V$|$--variance $<$filename$>$] Output the variance of the ensemble to the specified file.
+\item [-e$|$--credmin $<$filename$>$] Credible minimum based on the 95\% credible interval. This is computed from the histogram.
+\item [-E$|$--credmax $<$filename$>$] Credible maximum based on the 95\% credible interval. This is computed from the histogram.
+\item [-g$|$--histogram $<$filename$>$] Output the histogram to the specified file.
+
+\item [-b$|$--histogram-bins $<$int$>$] No. bins in histogram
+\item [-z$|$--zmin $<$float$>$] Min value of histogram
+\item [-Z$|$--zmax $<$float$>$] Max value of histogram
+
+\item [-W$|$--lonsamples $<$int$>$]       No. samples in longitude direction
+\item [-H$|$--latsamples $<$int$>$]       No. samples in latitude direction
+\end{description}
+
+Care should be taken in setting the range of the histogram and the
+number of bins as this can adversely affect the mode, median, and
+credible outputs. The images are computed on a regular lon/lat grid
+and increasing the resolution of this grid can increase the time it
+takes to do the post processing.
+
+The convert to text program takes no other arguments, it simply
+outputs the model as a text file with each line of the format:
+
+\begin{verbatim}
+<iteration> <likelihood> <nhierarchical> <hierarchical parameter>*nhierarhical
+<ncells> <cell phi> [<cell theta> <cell value>]*ncells
+\end{verbatim}
+
+where {\tt phi} is the colatitude in radians and {\tt theta} is the longitude in radians.
+
+In general the likelihood and convert to text program are quick to run. The program for
+generating the mean, if the number of Voronoi cells or the resolution requested is large,
+can take quite a while. It is recommended to use a combination of lower resolution and
+higher thinning for test runs when looking at the 
+
+\subsection{Diagnostics}
+
+The program will output log messages periodically depending on the verbosity level (default is
+every 1000 iterations). This information includes the time which is useful for estimation of
+remaining running time by looking at the time difference between two log outputs.
+The first line contains the iterations number (1000), the number of Cells, the current negative log likelihood,
+and the hierarchical scaling parameter. The second line shows the number of proposals, the number of
+accepted proposals and the percentage acceptance rate for each of the proposal types. An example of
+the output is shown below (with text wrapped to fit the page)
+
+\begin{verbatim}
+2016-08-19 11:32:22:info:generalvoronois2pt.cpp:main: 426: 1000: 
+Cells 1 Likelihood 221.591343 Lambda   1.000000
+2016-08-19 11:32:22:info:generalvoronois2pt.cpp:main: 429:         
+Value:    696    219 :  31.47
+ Move:    213    208 :  97.65
+Birth:     53      1 :   1.89
+Death:     38      1 :   2.63
+\end{verbatim}
+
+
+\subsection{Running on Terrawulf}
+
+There are example PBS submission scripts in the {\tt terrawulf} subdirectory
+included in the source code tar.gz bundle. These can be adapted to run your own
+problems. The PBS scripts are split into two parts, first there is an ``init''
+script, e.g. {\tt pbs\_singlechain\_constant\_init.sh} which is run without
+parameters, i.e.
+
+\begin{verbatim}
+> qsub pbs_singlechain_constant_init.sh 
+\end{verbatim}
+
+and will output files to the {\tt constant\_mpi\_0}. Then, this
+simulation can be continued with with the {\tt pbs\_singlechain\_constant\_cont.sh}
+script by setting the source and destination step, i.e.
+
+\begin{verbatim}
+> qsub -v SRCSTEP=0,DSTSTEP=1 pbs_singlechain_constant_cont.sh
+\end{verbatim}
+
+Which will then start from the previous run started by the ``init'' script and
+output results to {\tt constant\_mpi\_1}. This process can be repeated indefinitely
+until convergence is complete.
+
+The parallel program regularly outputs diagnostic information to log files in the
+output directories, in the above example, progress can be checked by running
+
+\begin{verbatim}
+> tail constant_mpi_0/log.txt-000
+\end{verbatim}
+
+which should show diagnostic information including current iteration number and
+acceptance rates.
+
+\section{Writing Custom Applications}
+
+\subsection{Background}
+
+For a custom application, the Likelihood function needs to be defined, which
+includes any forward modelling. The way the generic part of the code is formulated
+is that it is assume that an observation needs to know the value of the model
+at a certain number of points (at least one) on the globe. A forward model
+can take the values of the model at each point and compute a prediction. For
+example, in a tomographic forward model, the ray path integral can be approximated by a discrete
+summation to compute a travel time prediction. Lastly, the prediction is then
+compared to the observation and a probabilisitic likelihood can be computed, commonly
+an indepedent Gaussian likelihood, that is
+
+\begin{equation}
+  p(\mathbf{d}|\mathbf{m}) = \frac{1}{\sqrt{2 \pi} \prod_{i=1}^N \sigma_i} \exp \left\{
+  - \sum_{i = 1}^N \frac{(G(\mathbf{m})_i - d_i)^2}{2\sigma_i^2} \right\}
+    ,
+\end{equation}
+
+where $G(\mathbf{m})_i$ is the prediction, $d_i$ is the observation, $\sigma_i$ is the
+error on the observation. For accuracy, the negative log likelihood is used and separated
+into
+
+\begin{align}
+  \label{eqn:like}
+  \mathcal{L} = \sum_{i = 1}^N \frac{(G(\mathbf{m})_i - d_i)^2}{2\sigma_i^2} \\
+  \label{eqn:norm}
+  \mathcal{N} = \log \left\{ \frac{1}{\sqrt{2 \pi} \prod_{i=1}^N \sigma_i} \right\}
+  ,
+\end{align}
+
+and these are called {\tt like} and {\tt norm} in the code
+respectively. To implement a custom application, you first need to
+derive the likelihood and the operation of the forward model based
+model values at longitude, latitude coordinates on the surface of a
+sphere.
+
+\subsection{Loading data}
+
+The data file format is entirely in the control of the programmer. The command line
+application is passed a filename to load, and this is passed onto the load function
+directly. This file could be a raw data file or a configuration file that points
+to a series of files that require loading for the inverse problem. This function
+should perform two main functions: firstly to load all necessary data for subsequent
+calculation of predictions and the likelihood, and secondly to tell the generic
+code the points to be evaluated for each observation. The interface is as follows:
+
+\begin{verbatim}
+  typedef int (gvs2_addobservation_t)(int *npoints,
+                                      double *lons,
+                                      double *lats);
+  int gvs2_loaddata_(int *n,
+                     const char *filename,
+                     gvs2_addobservation_t addobs);
+\end{verbatim}
+
+or
+
+\begin{verbatim}
+  function gvs2_loaddata_(n, filename, addobs) bind(c)
+
+    integer, intent(in) :: n
+    character, dimension(n), intent(in) :: filename
+
+    interface iaddobs
+       function addobs(npoints, lons, lats) bind(c)
+         use iso_c_binding
+         integer :: addobs
+         integer, intent(in) :: npoints
+         real(kind = c_double), dimension(npoints), intent(in) :: lons
+         real(kind = c_double), dimension(npoints), intent(in) :: lats
+       end function addobs
+    end interface iaddobs
+   
+    integer :: gvs2_loaddata_
+
+  end function
+\end{verbatim}
+
+The parameters are
+
+\begin{description}
+\item[n] The length of the filename string
+\item[filename] The filename to load
+\item[addobs] A callback function used to register the points in longitude/latitude for each
+  observation.
+\end{description}
+
+The first two parameters are self explanatory with a minor point being that due
+to C++/fortran differences in string representations, the filename needs to be
+converted to a fortran string when calling {\tt open} (see the two fortran
+examples and the {\tt copystring} function therein to see how to do this).
+
+The {\tt addobs} callback function must be called once and only once for each
+observation. The parameters that need to be specified are, the number of
+points ({\tt npoints}) which should be 1 or more, and two arrays containing
+the longitude and latitude of each point needed to compute the prediction
+for an observation.
+
+It is up to the custom application to permanently store any data
+necessary for the likelihood or calculation of predictions in this
+function.
+
+The function should return zero on success and negative one for any
+error.  This will subsequently terminate the main program.
+
+\subsection{Computing predictions}
+
+The next function that needs to be implemented is the function that computes
+the predictions for a single observation. The C++ and fortran interfaces for this function
+are shown below
+
+
+\begin{verbatim}
+  int gvs2_compute_prediction_(int *observation,
+                               int *npoints,
+                               const double *value,
+                               double *unused,
+                               double *prediction);
+\end{verbatim}
+
+\begin{verbatim}
+  function gvs2_compute_prediction_(observationidx, npoints, values, unused, prediction) bind (c)
+    use iso_c_binding
+    
+    integer, intent(in) :: observationidx
+    integer, intent(in) :: npoints
+    real(kind = c_double), dimension(npoints), intent(in) :: values
+    real(kind = c_double), dimension(npoints), intent(out) :: unused
+    real(kind = c_double), intent(out) :: prediction
+
+    integer :: gvs2_compute_prediction_
+  end function
+\end{verbatim}
+
+The function passes in a observation index from 0 to the number of
+observations minus one (i.e. using C indexing). A cautionary note here
+for fortran here is that if the observations are stored in a standard
+fortran array, one needs to be added to this index (see fortran
+examples and the variable {\tt oi}).
+
+At present there is a single output value that needs to be computed and
+stored in the scalar prediction variable. This should be a value for regression
+type problems or a travel time for tomography type problems. There is an unused
+array currently in the code to allow for future improved functionality.
+
+The function should return zero on success and negative one if there is an error.
+
+\subsection{Computing the likelihood}
+
+The C++ and fortran interfaces for the function that needs to be implemented
+to compute the likelihood are below:
+
+\begin{verbatim}
+  int gvs2_compute_likelihood_(int *nobservation,
+                               double *hvalue,
+                               double *predictions,
+                               double *residuals,
+                               double *unused,
+                               double *like,
+                               double *norm);
+\end{verbatim}
+
+\begin{verbatim}
+  function gvs2_compute_likelihood_(nobservation, hvalue, predictions, residuals, unused, like, norm) bind (c)
+    use iso_c_binding
+    
+    integer, intent(in) :: nobservation
+    real(kind = c_double), intent(in) :: hvalue
+    real(kind = c_double), dimension(nobservation), intent(in) :: predictions
+    real(kind = c_double), dimension(nobservation), intent(out) :: residuals
+    real(kind = c_double), dimension(nobservation), intent(out) :: unused
+    real(kind = c_double), intent(out) :: like
+    real(kind = c_double), intent(out) :: norm
+
+    integer :: gvs2_compute_likelihood_
+  end function
+\end{verbatim}
+
+The input variables are
+
+\begin{description}
+\item[nobservation] The number of observations (size of the arrays passed in)
+\item[hvalue] The hierarchical scale value
+\item[predictions] The array of model predictions for each observation, i.e. the vector $G(\mathbf{m})$
+\end{description}
+
+When performing a hierarchical inversion where a noise term is
+inverted for, the value hvalue is the hierarchical value that can be
+used directly as the noise level on the data, or as a scaling term
+used to scale the data errors. In non-hierarchical inversions, this value
+will always be one and can be ignored.
+
+The output variables that need to be set are
+
+\begin{description}
+\item[residuals] The array of residuals, i.e. the vector $G(\mathbf{m}) - \mathbf{d}$
+\item[like] The negative log likelihood without the normalization constant, i.e. equation (\ref{eqn:like})
+  for an independent Gaussian likelihood
+\item[norm] The negative log of the likelihood normalization constant, i.e. equation (\ref{eqn:norm})
+  for an independent Gaussian likelihood
+\end{description}
+
+There is additionally an unused parameter for future expansion that should be ignored
+at this stage.
+
+Again, this function should return zero on success and negative one on error.
+
+\subsection{Synthetic Model Generation}
+
+For synthetic model generation useful for testing, an additional function needs to be
+implemented with the C++ and fortran interfaces below
+
+\begin{verbatim}
+  int gvs2_savedata_(int *n,
+                     const char *filename,
+                     double *noiselevel,
+                     int *nobservations,
+                     double *predictions);
+\end{verbatim}
+
+\begin{verbatim}
+  function gvs2_savedata_(n, filename, noiselevel, nobservation, predictions) bind(c)
+
+    integer, intent(in) :: n
+    character, dimension(n), intent(in) :: filename
+
+    real(kind = c_double), intent(in) :: noiselevel
+    integer, intent(in) :: nobservation
+    real(kind = c_double), dimension(nobservation), intent(in) :: predictions
+
+    integer :: gvs2_savedata_
+\end{verbatim}
+
+The parameter {\tt n} and {\tt filename} specify the length and the name
+of the file to create. The {\tt noiselevel} specifies the true Gaussian
+noise added to the synthetic observations (this will be zero when
+outputting the true observations). Lastly the {\tt nobservations} and
+{\tt predictions} specify the array size and the array of synthetic
+predictions that are to be output as the observations.
+
+For synthetic model general (see the file {\tt mksynthetic.cpp}), a
+template observation file will be loaded by calling {\tt gvs2\_loaddata\_}
+followed by {\tt gvs2\_compute\_prediction\_} 
+
+\subsection{Parallel implementation}
+
+The generic interface is structured for observation parallelism so that if for example
+a single chain is run on ten processors using the parallel version, observations are
+evenly split between processors and residuals computed. The results are gathered on
+a single processor where the likelihood is computed. In summary
+
+\begin{itemize}
+\item {\tt gvs2\_loaddata\_} is called by all processes at the beginning before
+  the iterations begin
+\item {\tt gvs2\_compute\_prediction\_} is called for a subset of the observations
+  on each processor
+\item {\tt gvs2\_compute\_likelihood\_} is called by one processor (as it is
+  generally a trivial summation over the residuals).
+\end{itemize}
+
+\subsection{Recommendations}
+
+The simplest path to starting a custom application is to copy one of
+the C++/fortran examples for regression or tomography and use that as
+a template.
+
+For each of these examples, there is an example subdirectory
+has a Makefile that
+
+\begin{enumerate}
+\item creates some synthetic template data using scripts included in this source
+  bundle. This essentially creates empty observations but with random points (regression) or
+  random paths (tomography) on the sphere.
+\item creates synthetic data using the compute predictions implementation and adding
+  some Gaussian noise
+\item runs a short single process inversion
+\item runs the post processing to compute the mean model and standard deviation.
+\end{enumerate}
+
+Both the source code for these programs and the simple examples provide good
+starting points for creating custom applications.
+
+\end{document}

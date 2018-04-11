@@ -1,0 +1,3 @@
+sphericalprior UniformSpherical
+sphericalproposal VonMisesSpherical
+1.0e2
