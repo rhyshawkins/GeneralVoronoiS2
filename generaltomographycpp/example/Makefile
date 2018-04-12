@@ -89,6 +89,7 @@ results_constant/mean.txt : results_constant/ch.dat
 
 #
 # To output history of the likelihood/hierarchical/no. cells(k) to monitor convergence
+# Above inversion wasn't hierarchical. 
 #
 results_constant/like.txt : results_constant/ch.dat
 	../../postS2Voronoi_likelihood -i $< -o $@ \
@@ -97,7 +98,9 @@ results_constant/like.txt : results_constant/ch.dat
 
 
 
-
+#
+# Same paths but observations with a East/West hemispherical model
+#
 synthetic_obs_ew.txt : synthetic_template.txt
 	../mksynthetictomography -i $< -o $@ \
 	-m EastWest \
@@ -105,6 +108,9 @@ synthetic_obs_ew.txt : synthetic_template.txt
 	-O synthetic_obs_ew.true \
 	-s 3.0 -f 1.5
 
+#
+# Same inversion but observations with a East/West hemispherical model
+#
 results_eastwest/ch.dat : prior_values.txt \
 	prior_position.txt \
 	synthetic_obs_ew.txt
@@ -123,6 +129,10 @@ results_eastwest/mean.txt : results_eastwest/ch.dat
 	-T results_eastwest/stddev.txt \
 	-W 180 -H 90
 
+#
+# Inversion using hierarchical error sampling (note the extra -H prior_hierarchical.txt
+# option.
+#
 results_eastwest_hierarchical/ch.dat : prior_values.txt \
 	prior_position.txt \
 	prior_hierarchical.txt \
@@ -135,6 +145,9 @@ results_eastwest_hierarchical/ch.dat : prior_values.txt \
 	-T 10 \
 	-t 50000 -v 1000
 
+#
+# Image is post processed in the same way
+#
 results_eastwest_hierarchical/mean.txt : results_eastwest_hierarchical/ch.dat
 	../../postS2Voronoi_mean -i $< -o $@ \
 	-t 10 -s 25000 \
@@ -142,3 +155,12 @@ results_eastwest_hierarchical/mean.txt : results_eastwest_hierarchical/ch.dat
 	-m results_eastwest_hierarchical/median.txt \
 	-T results_eastwest_hierarchical/stddev.txt \
 	-W 180 -H 90
+
+#
+# Extra hierarchical information 
+#
+results_eastwest_hierarchical/like.txt : results_eastwest_hierarchical/ch.dat
+	../../postS2Voronoi_likelihood -i $< -o $@ \
+	-H results_eastwest_hierarchical/hierarchical.txt \
+	-K results_eastwest_hierarchical/khistory.txt \
+	-t 10 
