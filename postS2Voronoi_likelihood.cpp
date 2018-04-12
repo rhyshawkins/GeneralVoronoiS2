@@ -31,11 +31,12 @@
 typedef sphericalcoordinate<double> coord_t;
 typedef chainhistoryreaderVoronoi<coord_t, double> chainhistoryreader_t;
 
-static char short_options[] = "i:o:H:t:s:h";
+static char short_options[] = "i:o:H:K:t:s:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"output", required_argument, 0, 'o'},
   {"hierarchical", required_argument, 0, 'H'},
+  {"khistory", required_argument, 0, 'K'},
   
   {"thin", required_argument, 0, 't'},
   {"skip", required_argument, 0, 's'},
@@ -66,8 +67,10 @@ int main(int argc, char *argv[])
   //
   // Output Files
   //
-  char *output; // mean
+  char *output; // Likelihood
   char *hierarchical;
+  char *khistory;
+  
   //
   // Defaults
   //
@@ -75,6 +78,7 @@ int main(int argc, char *argv[])
   input = nullptr;
   output = nullptr;
   hierarchical = nullptr;
+  khistory = nullptr;
   
   skip = 0;
   thin = 0;
@@ -99,6 +103,26 @@ int main(int argc, char *argv[])
 
     case 'H':
       hierarchical = optarg;
+      break;
+
+    case 'K':
+      khistory = optarg;
+      break;
+
+    case 't':
+      thin = atoi(optarg);
+      if (thin < 0) {
+	fprintf(stderr, "error: thin must be 0 or positive\n");
+	return -1;
+      }
+      break;
+
+    case 's':
+      skip = atoi(optarg);
+      if (skip < 0) {
+	fprintf(stderr, "error: skip must be 0 or greater\n");
+	return -1;
+      }
       break;
 
     default:
@@ -144,6 +168,16 @@ int main(int argc, char *argv[])
       return -1;
     }
   }
+
+  FILE *fp_khistory = NULL;
+  if (khistory) {
+    fp_khistory = fopen(khistory, "w");
+    if (fp_khistory == NULL) {
+      fprintf(stderr, "error: failed to create khistory file\n");
+      return -1;
+
+    }
+  }
   
   while (status > 0) {
       
@@ -158,6 +192,10 @@ int main(int argc, char *argv[])
 	    fprintf(fp_hierarchical, "%15.9f ", hierarchical_model.get(i));
 	  }
 	  fprintf(fp_hierarchical, "\n");
+	}
+
+	if (fp_khistory != NULL) {
+	  fprintf(fp_khistory, "%d\n", (int)model.cells.size());
 	}
       }
     }
@@ -178,6 +216,9 @@ int main(int argc, char *argv[])
   fclose(fp_like);
   if (fp_hierarchical != NULL) {
     fclose(fp_hierarchical);
+  }
+  if (fp_khistory != NULL) {
+    fclose(fp_khistory);
   }
 
   return 0;

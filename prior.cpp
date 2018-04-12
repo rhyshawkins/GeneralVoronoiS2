@@ -639,6 +639,70 @@ GaussianProposal::log_proposal_ratio(Rng &rng,
   return 0.0;
 }
 
+//
+// Log Gaussian proposal
+//
+Proposal *
+LogGaussianProposal::read(FILE *fp, Prior &prior)
+{
+  double std;
+
+  if (fscanf(fp, "%lf\n", &std) != 1) {
+    fprintf(stderr, "LogGaussianProposal::read: failed to read std dev\n");
+    return nullptr;
+  }
+
+  return new LogGaussianProposal(prior, std);
+}
+
+const bool LogGaussianProposal::REGISTRATION = Proposal::register_proposal("LogGaussian", LogGaussianProposal::read);
+
+LogGaussianProposal::LogGaussianProposal(Prior &prior, double _std) :
+  Proposal(prior),
+  std(_std)
+{
+}
+  
+LogGaussianProposal::~LogGaussianProposal()
+{
+}
+
+bool
+LogGaussianProposal::propose(Rng &rng,
+                             double temperature,
+                             double oldv,
+                             double &newv,
+                             double &logpriorratio)
+{
+  newv = exp(log(oldv) + rng.normal(std * sqrt(temperature)));
+
+  if (prior.valid(newv)) {
+    logpriorratio = prior.logpdf(newv) - prior.logpdf(oldv);
+    return true;
+  }
+
+  return false;
+}
+
+double
+LogGaussianProposal::log_proposal(Rng &rng,
+                                  double temperature,
+                                  double oldv,
+                                  double newv)
+{
+  return log(rng.pdf_normal(log(newv), log(oldv), std * sqrt(temperature)));
+}
+
+double
+LogGaussianProposal::log_proposal_ratio(Rng &rng,
+                                     double temperature,
+                                     double oldv,
+                                     double newv)
+{
+  return 0.0;
+}
+
+
 
 
 static double

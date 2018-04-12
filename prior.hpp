@@ -327,6 +327,36 @@ private:
   double std;
 
 };
+
+class LogGaussianProposal : public Proposal {
+public:
+
+  LogGaussianProposal(Prior &prior, double std);
+  ~LogGaussianProposal();
+
+  virtual bool propose(Rng &rng,
+                       double temperature,
+                       double oldv,
+                       double &newv,
+                       double &logpriorratio);
+
+  virtual double log_proposal(Rng &rng, double temperature,
+                              double oldv,
+                              double newv);
+  
+  virtual double log_proposal_ratio(Rng &rng, double temperature,
+                                    double oldv,
+                                    double newv);
+
+  static Proposal *read(FILE *fp, Prior &prior);
+
+private:
+
+  static const bool REGISTRATION;
+  
+  double std;
+
+};
   
 
 #endif // prior_hpp

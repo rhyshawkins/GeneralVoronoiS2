@@ -72,7 +72,7 @@ def subdividepath(points):
         
         mlon, mlat = gc_midpoint(lon1, lat1, lon2, lat2)
 
-        newpoints.extend([(lon1, lat1), (mlon, mlat)])
+        newpoints.extend([(lon1, lat1), (lonwrap(mlon), mlat)])
 
     newpoints.append(points[-1])
 
@@ -88,7 +88,14 @@ def mkpath(elon, elat, slon, slat, radius, samplelength):
 
     return path
 
-
+def lonwrap(lon):
+    if (lon < -180.0):
+        return lonwrap(lon + 360.0)
+    elif (lon > 180.0):
+        return lonwrap(lon - 360.0)
+    else:
+        return lon
+    
 def randomlonlat():
 
     x = numpy.random.normal()
@@ -102,6 +109,11 @@ def randomlonlat():
 
     lon = theta * 180.0/numpy.pi
     lat = 90.0 - phi*180.0/numpy.pi
+
+    #
+    # Ensure lon in range -180 .. 180
+    #
+    lon = lonwrap(lon)
 
     return lon, lat
 

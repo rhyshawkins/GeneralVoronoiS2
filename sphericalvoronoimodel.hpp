@@ -229,7 +229,6 @@ public:
     return true;
   }
 
-private:
   std::vector<cell_t> cells;
 
   bool logspace;

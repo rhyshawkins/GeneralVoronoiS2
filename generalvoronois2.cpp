@@ -370,6 +370,14 @@ int main(int argc, char *argv[])
     fprintf(fp, "%.9g\n", global->mean_residuals[i]);
   }
   fclose(fp);
+
+  //
+  // Save final model
+  //
+  mkpath(output, "finalmodel.txt", filename);
+  if (!global->model->save(filename)) {
+    throw GENERALVORONOIS2EXCEPTION("Failed to save final model\n");
+  }
   
   history->flush();
 

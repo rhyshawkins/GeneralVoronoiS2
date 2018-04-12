@@ -98,10 +98,16 @@ extern "C" {
     
     for (int j = 0; j < (*npoints); j ++) {
 
+      if (values[j] <= 0.0) {
+	fprintf(stderr, "gvs2_compute_prediction_: invalid value %f\n", values[j]);
+	return -1;
+      }
+      
       ttsum += obs[*observation].weights[j]/values[j];
 
     }
 
+    // printf("pred: %2d %10.6f %10.6f\n", *observation, ttsum, obs[*observation].ttime);
     *prediction = ttsum;
     return 0;
   }

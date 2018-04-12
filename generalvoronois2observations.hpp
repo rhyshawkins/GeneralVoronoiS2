@@ -56,6 +56,17 @@ public:
   {
   }
 
+  double lonwrap(double l)
+  {
+    if (l < -180.0) {
+      return lonwrap(l + 360.0);
+    } else if (l > 180.0) {
+      return lonwrap(l - 360.0);
+    } else {
+      return l;
+    }
+  }
+     
   void add(int npoints, const double *lon, const double *lat)
   {
     int n = obs.size();
@@ -64,7 +75,7 @@ public:
     for (int i = 0; i < npoints; i ++) {
     
       double phi = (90.0 - lat[i]) * M_PI/180.0;
-      double theta = lon[i] * M_PI/180.0;
+      double theta = lonwrap(lon[i]) * M_PI/180.0;
 
       obs[n].points.push_back(sphericalcoordinate<double>(phi,theta));
     }
