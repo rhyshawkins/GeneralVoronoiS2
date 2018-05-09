@@ -1,4 +1,4 @@
 prior Uniform
 0.0 10.0
 proposal Gaussian
-0.05
+0.1

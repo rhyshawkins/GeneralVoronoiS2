@@ -58,12 +58,15 @@ public:
 		       hierarchical_model &hierarchical,
 		       double temperature,
 		       double &log_prior_ratio,
-		       delta_t *&perturbation)
+		       delta_t *&perturbation,
+		       bool &relocate)
   {
     bool validproposal = false;
     double oldvalue;
     double newvalue;
     coord_t newposition;
+
+    relocate = true;
 
     if (undo_available) {
       throw GENERALVORONOIS2EXCEPTION("Proposal in progress\n");
@@ -104,7 +107,9 @@ public:
 	  // Get existing value at point
 	  //
 	  newposition = coord_t(newphi, newtheta);
-	  oldvalue = model.value_at_point(newposition);
+
+	  int idx;
+	  oldvalue = model.value_at_point(newposition, idx);
 	  
 	  //
 	  // Propose new value

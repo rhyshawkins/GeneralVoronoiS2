@@ -56,13 +56,15 @@ public:
 		       hierarchical_model &hierarchical,
 		       double temperature,
 		       double &log_prior_ratio,
-		       delta_t *&perturbation)
+		       delta_t *&perturbation,
+		       bool &relocate)
   {
     bool validproposal = false;
     int cell;
     coord_t newposition;
 
-
+    relocate = true;
+    
     if (this->primary()) {
       
       p ++;

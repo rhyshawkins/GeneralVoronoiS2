@@ -58,11 +58,14 @@ public:
 		       hierarchical_model &hierarchical,
 		       double temperature,
 		       double &log_prior_ratio,
-		       delta_t *&perturbation)
+		       delta_t *&perturbation,
+		       bool &relocate)
   {
     bool validproposal = false;
     int cell;
 
+    relocate = true;
+    
     if (this->primary()) {
       
       p ++;
@@ -101,8 +104,9 @@ public:
       log_prior_ratio = -(prior.logpdf(undo_value) + position_prior.logpdf(undo_coord.phi,
 									   undo_coord.theta));
       model.delete_cell(cell);
-      
-      double new_value = model.value_at_point(undo_coord);
+
+      int idx;
+      double new_value = model.value_at_point(undo_coord, idx);
       
       last_log_proposal_ratio =
 	position_proposal->log_proposal(random,

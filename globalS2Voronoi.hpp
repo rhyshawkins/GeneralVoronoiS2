@@ -198,7 +198,7 @@ public:
     }
   }
 
-  double likelihood(double &norm)
+  double likelihood(double &norm, bool relocate)
   {
     if (data.obs.size() > 0) {
       if (communicator == MPI_COMM_NULL) {
@@ -209,8 +209,35 @@ public:
 	  //
 	  // Look up points
 	  //
-	  for (int j = 0; j < npoints; j ++) {
-	    data.obs[i].values[j] = model->value_at_point(data.obs[i].points[j]);
+	  if (relocate) {
+	    // Slow method.
+	    for (int j = 0; j < npoints; j ++) {
+	      data.obs[i].idx[j] = -1;
+	      data.obs[i].values[j] = model->value_at_point(data.obs[i].points[j],
+							    data.obs[i].idx[j]);
+	    }
+	  } else {
+	    // If cache is ok, look up value by index
+	    for (int j = 0; j < npoints; j ++) {
+	      data.obs[i].values[j] = model->value_at_index(data.obs[i].idx[j]);
+
+#if 0	      
+	      int tidx = -1;
+	      double tval;
+
+	      tval = model->value_at_point(data.obs[i].points[j], tidx);
+	      if (data.obs[i].idx[j] != tidx) {
+		throw GENERALVORONOIS2EXCEPTION("Mismatch in index: %d %d",
+						data.obs[i].idx[j], tidx);
+	      }
+
+	      if (data.obs[i].values[j] != tval) {
+		throw GENERALVORONOIS2EXCEPTION("Mismatch in value: %f %f",
+						data.obs[i].values[j], tval);
+	      }
+#endif
+	      
+	    }
 	  }
 
 	  //
@@ -248,11 +275,22 @@ public:
 	for (int i = 0; i < mpi_counts[rank]; i ++) {
 	  int o = mpi_offsets[rank] + i;
 	  int npoints = data.obs[o].points.size();
+
 	  //
 	  // Look up points
 	  //
-	  for (int j = 0; j < npoints; j ++) {
-	    data.obs[o].values[j] = model->value_at_point(data.obs[o].points[j]);
+	  if (relocate) {
+	    
+	    for (int j = 0; j < npoints; j ++) {
+	      data.obs[o].values[j] = model->value_at_point(data.obs[o].points[j],
+							    data.obs[o].idx[j]);
+	    }
+
+	  } else {
+	    // If cache is ok, look up value by index
+	    for (int j = 0; j < npoints; j ++) {
+	      data.obs[o].values[j] = model->value_at_index(data.obs[o].idx[j]);
+	    }
 	  }
 
 	  //

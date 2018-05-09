@@ -58,11 +58,14 @@ public:
 		       hierarchical_model &hierarchical,
 		       double temperature,
 		       double &log_prior_ratio,
-		       delta_t *&perturbation)
+		       delta_t *&perturbation,
+		       bool &relocate)
   {
     bool validproposal = false;
     int hindex;
     double newv;
+
+    relocate = false;
 
     if (undo_h != nullptr) {
       throw GENERALVORONOIS2EXCEPTION("Undo information existing for new proposal\n");
@@ -100,8 +103,8 @@ public:
       undo_index = hindex;
       undo_v = hierarchical.get(hindex);
 	
-      log_prior_ratio += 
-	(double)nobs*(log(undo_v) - log(newv));
+      log_prior_ratio = 0.0;
+	// (double)nobs*(log(undo_v) - log(newv));
 	
       hierarchical.set(hindex, newv);
     }

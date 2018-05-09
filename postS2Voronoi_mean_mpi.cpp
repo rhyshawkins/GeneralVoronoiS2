@@ -372,8 +372,9 @@ int main(int argc, char *argv[])
 	      
 	      // -180 .. 180
 	      double imagetheta = ((double)i + 0.5)/(double)lonsamples * 2.0 * M_PI - M_PI;
-	      
-	      image[j * lonsamples + i] = model.value_at_point(coord_t(imagephi, imagetheta));
+
+	      int idx;
+	      image[j * lonsamples + i] = model.value_at_point(coord_t(imagephi, imagetheta), idx);
 	      
 	    }
 	  }

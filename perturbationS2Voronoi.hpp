@@ -75,7 +75,8 @@ public:
 		       hierarchical_model &hierarchical,
 		       double temperature,
 		       double &log_prior_ratio,
-		       delta_t *&perturbation) = 0;
+		       delta_t *&perturbation,
+		       bool &relocate) = 0;
 
   virtual double log_proposal_ratio(Rng &random,
 				    PriorProposal &prior,

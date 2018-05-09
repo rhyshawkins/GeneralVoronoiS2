@@ -67,7 +67,7 @@ public:
     perturbations.push_back(WeightedPerturbation(p, weight));
   }
 
-  bool propose(globalS2Voronoi &g, double &log_prior_ratio, delta_t *&perturbation)
+  bool propose(globalS2Voronoi &g, double &log_prior_ratio, delta_t *&perturbation, bool &relocate)
   {
     if (active >= 0) {
       throw GENERALVORONOIS2EXCEPTION("Already have active perturbation\n");
@@ -108,7 +108,8 @@ public:
 			   *g.hierarchical,
 			   g.temperature,
 			   log_prior_ratio,
-			   perturbation);
+			   perturbation,
+			   relocate);
     if (!r) {
       active = -1;
     }

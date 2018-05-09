@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
   death->initialize_mpi(chain_communicator);
 
   current_norm = 0.0;
-  current_likelihood = global->likelihood(current_norm);
+  current_likelihood = global->likelihood(current_norm, true);
   if (chain_rank == 0) {
     INFO("Chain %03d: Initial likelihood: %10.6f (%10.6f)\n", chain_id, current_likelihood, current_norm);
   }
@@ -398,6 +398,8 @@ int main(int argc, char *argv[])
     //
   }
   
+  bool relocate = true;
+  
   for (int i = 0; i < total; i ++) {
     
     double log_prior_ratio;
@@ -405,10 +407,10 @@ int main(int argc, char *argv[])
     PerturbationS2Voronoi::delta_t *perturbation = nullptr;
     bool accepted;
     
-    if (pc.propose(*global, log_prior_ratio, perturbation)) {
+    if (pc.propose(*global, log_prior_ratio, perturbation, relocate)) {
 
       double proposed_norm = 0.0;
-      double proposed_likelihood = global->likelihood(proposed_norm);
+      double proposed_likelihood = global->likelihood(proposed_norm, relocate);
       accepted = false;
       
       if (chain_rank == 0) {
@@ -441,6 +443,8 @@ int main(int argc, char *argv[])
 	pc.accept(*global);
 	current_likelihood = proposed_likelihood;
 	global->accept();
+	relocate = false;
+	
       } else {
 	pc.reject(*global);
 	global->reject();

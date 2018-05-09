@@ -46,9 +46,9 @@ public:
 
     std::vector<sphericalcoordinate<double>> points;
 
-    std::vector<double> values;
-    std::vector<double> weights;
-    std::vector<int> idx;
+    std::vector<double> values;  // Cached value for forward model
+    std::vector<double> weights; // Unused at the moment 
+    std::vector<int> idx;        // Cached model index for speed
   };
 
   

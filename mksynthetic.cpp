@@ -92,10 +92,95 @@ double synthetic_cubedsphere(double phi, double theta)
   }
 }
 
+//
+// Extra synthetic tests added by Sima Mousavi, and modified by Rhys Hawkins
+//
+double synthetic_checkerboard(double phi, double theta)
+{
+  static constexpr double RADIUS = M_PI/8.0;
+  static constexpr double CLAT = M_PI/3.0;
+  static constexpr double CLON = M_PI/4.0;
+  
+  static constexpr double HIGH = 0.75;
+  static constexpr double LOW = 0.25;
+  sphericalcoordinate<double> p(phi, theta);
+  
+  if (theta < 0.0) {
+
+    //
+    // Low background hemisphere
+    //
+
+    if (theta > -M_PI/2.0) {
+
+      if (phi < M_PI/2.0) {
+	if (p.distance(sphericalcoordinate<double>(CLAT, -CLON)) < RADIUS) {
+	  return HIGH;
+	}
+      } else {
+	if (p.distance(sphericalcoordinate<double>(M_PI - CLAT, -CLON)) < RADIUS) {
+	  return HIGH;
+	}
+      }
+	
+    } else {
+
+      if (phi < M_PI/2.0) {
+	if (p.distance(sphericalcoordinate<double>(CLAT, -M_PI + CLON)) < RADIUS) {
+	  return HIGH;
+	}
+      } else {
+	if (p.distance(sphericalcoordinate<double>(M_PI - CLAT, -M_PI + CLON)) < RADIUS) {
+	  return HIGH;
+	}
+      }
+
+    }
+
+    return LOW;
+
+  } else {
+
+    //
+    // Low background hemisphere
+    //
+
+    if (theta < M_PI/2.0) {
+
+      if (phi < M_PI/2.0) {
+	if (p.distance(sphericalcoordinate<double>(CLAT, CLON)) < RADIUS) {
+	  return LOW;
+	}
+      } else {
+	if (p.distance(sphericalcoordinate<double>(M_PI - CLAT, CLON)) < RADIUS) {
+	  return LOW;
+	}
+      }
+	
+    } else {
+
+      if (phi < M_PI/2.0) {
+	if (p.distance(sphericalcoordinate<double>(CLAT, M_PI - CLON)) < RADIUS) {
+	  return LOW;
+	}
+      } else {
+	if (p.distance(sphericalcoordinate<double>(M_PI - CLAT, M_PI - CLON)) < RADIUS) {
+	  return LOW;
+	}
+      }
+
+    }
+
+    return HIGH;
+
+  }
+}
+
 std::map<std::string, synthetic_model_f> models = { {"Constant", synthetic_constant},
 						    {"EastWest", synthetic_eastwest},
 						    {"NorthSouth", synthetic_northsouth},
-						    {"CubedSphere", synthetic_cubedsphere} };
+						    {"CubedSphere", synthetic_cubedsphere},
+						    {"CheckerBoard", synthetic_checkerboard}};
 
 static char short_options[] = "i:o:O:I:m:ln:S:W:H:s:f:h";
 static struct option long_options[] = {

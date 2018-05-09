@@ -124,7 +124,7 @@ public:
     cells.insert(cells.begin() + index, cell_t(p, v));
   }
 
-  void nearest(const coord_t &p, coord_t &cell_centre, value &cell_value) const
+  void nearest(const coord_t &p, coord_t &cell_centre, int &cell_index, value &cell_value) const
   {
     if (cells.size() == 0) {
       throw GENERALVORONOIS2EXCEPTION("No nodes\n");
@@ -133,6 +133,7 @@ public:
     value mindist = cells[0].distance(p);
     cell_value = cells[0].v;
     cell_centre = cells[0].c;
+    cell_index = 0;
     
     for (int i = 1; i < (int)cells.size(); i ++) {
 
@@ -141,6 +142,7 @@ public:
 	cell_value = cells[i].v;
 	cell_centre = cells[i].c;
 	mindist = d;
+	cell_index = i;
       }
     }
 
@@ -149,15 +151,25 @@ public:
     }
   }
 
-  value value_at_point(const coord_t &p) const
+  value value_at_point(const coord_t &p, int &index) const
   {
     coord_t centre;
     value v;
 
-    nearest(p, centre, v);
+    nearest(p, centre, index, v);
 
     return v;
   }
+
+  value value_at_index(int index) const
+  {
+    if (index < 0 || index >= (int)cells.size()) {
+      throw GENERALVORONOIS2EXCEPTION("Index out of range %d (%d)", (int)index, (int)cells.size());
+    }
+    
+    return cells[index].v;
+  }
+    
 
   cell_t *get_cell_by_index(size_t i)
   {

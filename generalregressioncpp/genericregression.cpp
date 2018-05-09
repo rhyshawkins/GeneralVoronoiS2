@@ -70,7 +70,8 @@ extern "C" {
 
   {
     double sum = 0.0;
-    double norm = -0.5*log(2.0*M_PI);
+    double norm = 0.5*log(2.0*M_PI);
+
     for (int i = 0; i < (*nobservation); i ++) {
       double res = predictions[i] - obs[i].value;
       residuals[i] = res;

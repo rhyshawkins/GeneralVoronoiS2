@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 			       logspace);
 
   current_norm = 0.0;
-  current_likelihood = global->likelihood(current_norm);
+  current_likelihood = global->likelihood(current_norm, true);
   printf("Initial likelihood: %10.6f (%10.6f)\n", current_likelihood, current_norm);
   global->accept();
 
@@ -292,14 +292,17 @@ int main(int argc, char *argv[])
     }
   }
 
+  bool last_relocate = false;
+  
   for (int i = 0; i < total; i ++) {
     
     double log_prior_ratio;
     double log_proposal_ratio;
     PerturbationS2Voronoi::delta_t *perturbation = nullptr;
-    
-    if (pc.propose(*global, log_prior_ratio, perturbation)) {
-      
+
+    bool propose_relocate;
+    if (pc.propose(*global, log_prior_ratio, perturbation, propose_relocate)) {
+
       if (perturbation == nullptr) {
 	throw GENERALVORONOIS2EXCEPTION("Valid proposal has null perturbation\n");
       }
@@ -307,9 +310,15 @@ int main(int argc, char *argv[])
       double u = log(global->random.uniform());
 
       double proposed_norm = 0.0;
-      double proposed_likelihood = global->likelihood(proposed_norm);
+      double proposed_likelihood = global->likelihood(proposed_norm, last_relocate || propose_relocate);
       perturbation->set_proposed_likelihood(proposed_likelihood, proposed_norm);
 
+      // if (!relocate) {
+      // 	printf("Proposed: %10.6f %10.6f (%10.6f %10.6f)\n",
+      // 	       proposed_likelihood, proposed_norm,
+      // 	       current_likelihood, current_norm);
+      // }
+	
       log_proposal_ratio = pc.log_proposal_ratio(*global);
 
       if (u < ((current_likelihood + current_norm) -
@@ -322,10 +331,15 @@ int main(int argc, char *argv[])
 	
 	current_likelihood = proposed_likelihood;
 	current_norm = proposed_norm;
+
+	last_relocate = false;
+	
       } else {
 	pc.reject(*global);
 	perturbation->reject(); 
 	global->reject();
+
+	last_relocate = propose_relocate;
       }
     }
 
