@@ -60,6 +60,28 @@ results_constant/mean.txt : results_constant/ch.dat
 	-T results_constant/stddev.txt \
 	-W 180 -H 90
 
+results_constant_opt/ch.dat : prior_values.txt \
+	prior_position.txt \
+	synthetic_obs_constant.txt
+	mkdir -p results_constant_opt
+	../regressionvoronois2 -i synthetic_obs_constant.txt -o results_constant_opt/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-T 1000 \
+	-t 1000 \
+	-v 10 \
+	-C 100 \
+	-z 1000 \
+	-Z 5.0
+
+results_constant_opt/mean.txt : results_constant_opt/ch.dat
+	../../postS2Voronoi_mean -i $< -o $@ \
+	-t 10 -s 0 \
+	-z 0 -Z 10 \
+	-T results_constant_opt/stddev.txt \
+	-W 180 -H 90
+
+
 results_checkerboard/ch.dat : prior_values.txt \
 	prior_position.txt \
 	prior_hierarchical.txt \
@@ -81,4 +103,24 @@ results_checkerboard/mean.txt : results_checkerboard/ch.dat
 	-T results_checkerboard/stddev.txt \
 	-W 90 -H 45
 
+results_checkerboard_opt/ch.dat : prior_values.txt \
+	prior_position.txt \
+	prior_hierarchical.txt \
+	synthetic_obs_checkerboard.txt
+	mkdir -p results_checkerboard_opt
+	../regressionvoronois2 -i synthetic_obs_checkerboard.txt -o results_checkerboard_opt/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-T 1000 \
+	-t 1000 \
+	-v 10 \
+	-C 500 \
+	-z 10000 \
+	-Z 5.0
 
+results_checkerboard_opt/mean.txt : results_checkerboard_opt/ch.dat
+	../../postS2Voronoi_mean -i $< -o $@ \
+	-t 10 -s 0 \
+	-z 0 -Z 10 \
+	-T results_checkerboard_opt/stddev.txt \
+	-W 90 -H 45
