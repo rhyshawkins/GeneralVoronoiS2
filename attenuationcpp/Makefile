@@ -17,16 +17,16 @@ TDTBASE=../../TDTbase
 LIBS = -L$(TDTBASE)/log -llog \
 	$(shell gsl-config --libs)
 
-TARGETOBJS = generictomography.o \
+TARGETOBJS = attenuationtomography.o \
 	ak135.o
 
 TARGETS = mksynthetictomography \
-	tomographyvoronois2 \
-	tomographyvoronois2pt
+	attenuationvoronois2 \
+	attenuationvoronois2pt
 
 all : $(TARGETS)
 
-generictomography.o : generictomography.cpp
+attenuationtomography.o : attenuationtomography.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 ../%.o : ../%.cpp
@@ -35,11 +35,11 @@ generictomography.o : generictomography.cpp
 mksynthetictomography : $(TARGETOBJS) $(BASEOBJS) ../mksynthetic.o
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../mksynthetic.o $(LIBS)
 
-tomographyvoronois2 : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2.o 
+attenuationvoronois2 : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2.o 
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2.o $(LIBS)
 
-tomographyvoronois2pt : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o 
+attenuationvoronois2pt : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o 
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o $(LIBS)
 
 clean :
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) *.o

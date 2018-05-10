@@ -7,7 +7,7 @@
 #include "tomographyutil.hpp"
 
 struct observation {
-  double ttime;
+  double tstar;
   double sigma;
 
   std::vector<double> lons;
@@ -25,8 +25,16 @@ extern "C" {
 		     const char *filename,
 		     gvs2_addobservation_t addobs)
   {
+    char stats_filename[1024];
+    
     FILE *fp = fopen(filename, "r");
     if (fp == NULL) {
+      return -1;
+    }
+
+    sprintf(stats_filename, "%s.stats", filename);
+    FILE *fp_stats = fopen(stats_filename, "w");
+    if (fp_stats == NULL) {
       return -1;
     }
 
@@ -40,7 +48,7 @@ extern "C" {
 
       int npoints;
       if (fscanf(fp, "%lf %lf %d\n",
-		 &obs[i].ttime,
+		 &obs[i].tstar,
 		 &obs[i].sigma,
 		 &npoints) != 3) {
 	return -1;
@@ -68,9 +76,16 @@ extern "C" {
       // from models.
       //
       compute_weights(obs[i].lons, obs[i].lats, obs[i].rs, obs[i].weights);
+
+      double tw = 0.0;
+      for (auto &w: obs[i].weights) {
+	tw += w;
+      }
+      fprintf(fp_stats, "%10.6f %10.6f\n", obs[i].tstar, tw/obs[i].tstar);
     }
 
     fclose(fp);
+    fclose(fp_stats);
     return 0;
   }
 
@@ -102,7 +117,7 @@ extern "C" {
 
     }
 
-    // printf("pred: %2d %10.6f %10.6f\n", *observation, ttsum, obs[*observation].ttime);
+    // printf("pred: %2d %10.6f %10.6f\n", *observation, ttsum, obs[*observation].tstar);
     *prediction = ttsum;
     return 0;
   }
@@ -119,7 +134,7 @@ extern "C" {
     double sum = 0.0;
     double norm = -0.5*log(2.0*M_PI);
     for (int i = 0; i < (*nobservation); i ++) {
-      double res = predictions[i] - obs[i].ttime;
+      double res = predictions[i] - obs[i].tstar;
       residuals[i] = res;
       double n = hierarchical[0] * obs[i].sigma;
 

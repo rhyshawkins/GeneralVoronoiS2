@@ -81,6 +81,7 @@ void compute_weights(const std::vector<double> &lons,
   //
   for (int i = 0; i < (int)lons.size(); i ++) {
 
+    // printf("dist %10.6f vp: %10.6f\n", weights[i], pwave_velocity<double>(rs[i]));
     weights[i] /= pwave_velocity<double>(rs[i]);
 
   }
