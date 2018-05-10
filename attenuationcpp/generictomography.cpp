@@ -91,19 +91,14 @@ extern "C" {
     }
 
     //
-    // Here the values are velocities and the weights are the distances travelled so
-    // travel time is a sum over weights/velocities.
+    // Here the values are log(Q) and the weights are the distances/Vp so
+    // t* is a sum over weights/exp(values).
     //
     double ttsum = 0.0;
     
     for (int j = 0; j < (*npoints); j ++) {
 
-      if (values[j] <= 0.0) {
-	fprintf(stderr, "gvs2_compute_prediction_: invalid value %f\n", values[j]);
-	return -1;
-      }
-      
-      ttsum += obs[*observation].weights[j]/values[j];
+      ttsum += obs[*observation].weights[j]/exp(values[j]);
 
     }
 
