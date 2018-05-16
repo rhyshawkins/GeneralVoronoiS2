@@ -270,15 +270,48 @@ generating the mean, if the number of Voronoi cells or the resolution requested 
 can take quite a while. It is recommended to use a combination of lower resolution and
 higher thinning for test runs when looking at the 
 
+\subsection{Optimizing the initial model}
+
+By default, the program starts with a single randomly generated cell. This means that
+for complex models, the trans-dimensional steps must generate a lot of new cells.
+Due to the generally low acceptance rates of trans-dimensional steps, this can be
+very inefficient.
+
+To ameliorate this, extra options are available to start the model from some number of
+initial cells and perform a fixed dimension optimization of the model. This is achieved
+with the following command line arguments:
+
+\begin{description}
+\item [-C$|$--initial-cells $<$int$>$] The number of initial cells randomly generated
+  from the prior
+\item [-z$|$--optimize-iterations $<$int$>$] The number of simulated annealing steps for
+  the optimization of the initial model
+\item [-Z$|$--optimize-temperature $<$float$>$] The initial (max) temperature of the simulated
+  annealing optimization
+\end{description}
+
+The best number of cells to initialise with would be the mode obtained
+from the inversion which is not known in advance, hence some trial and
+error is involved in the setting of this.
+
+For the optimization parameters, generally the simulated annealing
+temperature of around 5 $\ldots$ 10 is sufficient for simple
+problems. The number of iterations is proportional to the number of
+initial cells, ie the complexity of the model, so for 10 initial
+cells, 1000 optimization iterations would probably be sufficient.
+
 \subsection{Diagnostics}
 
-The program will output log messages periodically depending on the verbosity level (default is
-every 1000 iterations). This information includes the time which is useful for estimation of
-remaining running time by looking at the time difference between two log outputs.
-The first line contains the iterations number (1000), the number of Cells, the current negative log likelihood,
-and the hierarchical scaling parameter. The second line shows the number of proposals, the number of
-accepted proposals and the percentage acceptance rate for each of the proposal types. An example of
-the output is shown below (with text wrapped to fit the page)
+The program will output log messages periodically depending on the
+verbosity level (default is every 1000 iterations). This information
+includes the time which is useful for estimation of remaining running
+time by looking at the time difference between two log outputs.  The
+first line contains the iterations number (1000), the number of Cells,
+the current negative log likelihood, and the hierarchical scaling
+parameter. The second line shows the number of proposals, the number
+of accepted proposals and the percentage acceptance rate for each of
+the proposal types. An example of the output is shown below (with text
+wrapped to fit the page)
 
 \begin{verbatim}
 2016-08-19 11:32:22:info:generalvoronois2pt.cpp:main: 426: 1000: 

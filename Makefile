@@ -92,6 +92,7 @@ EXAMPLES = generalregressioncpp/Makefile \
 
 EXTRADIST = \
 	documentation/manual.tex \
+	documentation/manual.pdf \
 	scripts/mksyntheticpathtemplate.py \
 	scripts/mksyntheticpointstemplate.py \
 	scripts/plot_likelihood_converge.py \
@@ -104,6 +105,9 @@ TARGETS = postS2Voronoi_mean \
 	postS2Voronoi_mean_mpi \
 	postS2Voronoi_likelihood \
 	postS2Voronoi_text
+
+documentation/manual.pdf : documentation/manual.tex
+	cd documentation && pdflatex manual.tex
 
 all : $(TARGETS)
 
@@ -126,7 +130,7 @@ DATE = $(shell date +"%Y%m%d%H%M")
 DIR = GeneralVoronoiS2
 TGZ = $(DIR).tar.gz
 
-dist : all
+dist : all documentation/manual.pdf
 	mkdir -p $(DIR)
 	echo $(DATE) > $(DIR)/Version
 	for f in Makefile $(SRCS) $(EXAMPLES) $(EXTRADIST); do \
