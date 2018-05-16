@@ -153,3 +153,10 @@ results_checkerboard_pt_cont/ch.dat-000 : results_checkerboard_pt/ch.dat-000
 	-t 10000 \
 	-v 10 \
 	-c 4
+
+results_checkerboard_pt_cont/mean.txt : results_checkerboard_pt_cont/ch.dat-000
+	mpirun -np 4 ../../postS2Voronoi_mean_mpi -i results_checkerboard_pt_cont/ch.dat -o $@ \
+	-t 10 -s 0 \
+	-z 0 -Z 10 \
+	-T results_checkerboard_pt_cont/stddev.txt \
+	-W 90 -H 45
