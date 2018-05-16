@@ -30,7 +30,8 @@ OBJS = rng.o \
 	hierarchical_model.o \
 	pathutil.o \
 	generalvoronois2exception.o \
-	globalS2Voronoi.o
+	globalS2Voronoi.o \
+	simulated_annealing_scales.o
 
 MPI_OBJS = 
 
@@ -70,7 +71,10 @@ SRCS = Makefile \
 	postS2Voronoi_text.cpp \
 	prior.cpp \
 	rng.cpp \
-	sphericalprior.cpp
+	sphericalprior.cpp \
+	simulated_annealing.hpp \
+	simulated_annealing_scales.cpp \
+	simulated_annealing_scales.hpp
 
 EXAMPLES = generalregressioncpp/Makefile \
 	generalregressioncpp/genericregression.cpp \

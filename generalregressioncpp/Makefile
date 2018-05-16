@@ -1,6 +1,6 @@
 
 CXX=mpicxx
-CXXFLAGS=-c -g -Wall -I..
+CXXFLAGS=-c -g -Wall --std=c++11 -I..
 
 CXXFLAGS+=-O3
 
@@ -11,7 +11,8 @@ BASEOBJS = \
 	../prior.o \
 	../rng.o \
 	../sphericalprior.o \
-	../globalS2Voronoi.o
+	../globalS2Voronoi.o \
+	../simulated_annealing_scales.o
 
 TDTBASE=../../TDTbase
 LIBS = -L$(TDTBASE)/log -llog \
@@ -41,4 +42,4 @@ regressionvoronois2pt : $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o
 	$(CXX) -o $@ $(TARGETOBJS) $(BASEOBJS) ../generalvoronois2pt.o $(LIBS)
 
 clean :
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) *.o

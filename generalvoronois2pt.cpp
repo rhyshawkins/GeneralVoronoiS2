@@ -39,7 +39,7 @@
 
 typedef chainhistorywriterVoronoi<sphericalcoordinate<double>, double> chainhistorywriter_t;
 
-static char short_options[] = "i:I:o:P:H:M:B:D:T:S:t:l:v:b:pLc:K:h";
+static char short_options[] = "i:I:o:P:H:M:B:D:T:S:t:l:v:b:pLc:K:C:z:Z:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
@@ -63,6 +63,10 @@ static struct option long_options[] = {
 
   {"chains", required_argument, 0, 'c'},
   {"temperatures", required_argument, 0, 'K'},
+
+  {"initial-cells", required_argument, 0, 'C'},
+  {"optimize-iterations", required_argument, 0, 'z'},
+  {"optimize-temperature", required_argument, 0, 'Z'},
   
   {"help", no_argument, 0, 'h'},
   {0, 0, 0, 0}
@@ -88,6 +92,10 @@ int main(int argc, char *argv[])
   char *birthdeathprior;
 
   int maxcells;
+  int initialcells;
+
+  int optimizeiterations;
+  double optimizetemperature;
 
   double lambda;
 
@@ -141,6 +149,10 @@ int main(int argc, char *argv[])
   birthdeathprior = nullptr;
 
   maxcells = 1000;
+  initialcells = 1;
+
+  optimizeiterations = 0;
+  optimizetemperature = 10.0;
 
   lambda = 1.0;
 
@@ -254,7 +266,31 @@ int main(int argc, char *argv[])
 	return -1;
       }
       break;
-      
+
+    case 'C':
+      initialcells = atoi(optarg);
+      if (initialcells < 1) {
+	fprintf(stderr, "error: need at least one initial cell\n");
+	return -1;
+      }
+      break;
+
+    case 'z':
+      optimizeiterations = atoi(optarg);
+      if (optimizeiterations < 0) {
+	fprintf(stderr, "error: optimization iterations must be positive\n");
+	return -1;
+      }
+      break;
+
+    case 'Z':
+      optimizetemperature = atof(optarg);
+      if (optimizetemperature < 1.0) {
+	fprintf(stderr, "error: optimization temperature must be 1 or greater\n");
+	return -1;
+      }
+      break;
+   
     case 'h':
     default:
       usage(argv[0]);
@@ -314,7 +350,6 @@ int main(int argc, char *argv[])
   }
 					    
   global = new globalS2Voronoi(input,
-			       initial_model_ptr,
 			       prior,
 			       hierarchicalprior,
 			       positionprior,
@@ -338,6 +373,35 @@ int main(int argc, char *argv[])
   move->initialize_mpi(chain_communicator);
   birth->initialize_mpi(chain_communicator);
   death->initialize_mpi(chain_communicator);
+
+  //
+  // Initialize cells
+  //
+  global->initialize(initial_model_ptr, initialcells);
+
+  //
+  // Optimization of model
+  //
+  if (optimizeiterations > 0) {
+
+    double acceptance = 0.0;
+    
+    current_likelihood = global->optimize_sa(optimizeiterations,
+					     optimizetemperature,
+					     acceptance,
+					     verbosity);
+
+    if (current_likelihood < 0.0) {
+      fprintf(stderr, "error: optimization failed\n");
+      return -1;
+    }
+
+    if (chain_rank == 0) {
+      INFO("Optimized likelihood: %10.6f (%10.6f)\n", current_likelihood, current_norm);
+      INFO("  %10.6f\n", acceptance * 100.0);
+    }
+  }
+  
 
   current_norm = 0.0;
   current_likelihood = global->likelihood(current_norm, true);
@@ -398,7 +462,7 @@ int main(int argc, char *argv[])
     //
   }
   
-  bool relocate = true;
+  bool last_relocate = false;
   
   for (int i = 0; i < total; i ++) {
     
@@ -406,11 +470,13 @@ int main(int argc, char *argv[])
     double log_proposal_ratio;
     PerturbationS2Voronoi::delta_t *perturbation = nullptr;
     bool accepted;
-    
-    if (pc.propose(*global, log_prior_ratio, perturbation, relocate)) {
+
+    bool propose_relocate;
+    if (pc.propose(*global, log_prior_ratio, perturbation, propose_relocate)) {
 
       double proposed_norm = 0.0;
-      double proposed_likelihood = global->likelihood(proposed_norm, relocate);
+      double proposed_likelihood = global->likelihood(proposed_norm,
+						      last_relocate || propose_relocate);
       accepted = false;
       
       if (chain_rank == 0) {
@@ -442,12 +508,15 @@ int main(int argc, char *argv[])
       if (accepted) {
 	pc.accept(*global);
 	current_likelihood = proposed_likelihood;
+	current_norm = proposed_norm;
 	global->accept();
-	relocate = false;
+	last_relocate = false;
 	
       } else {
 	pc.reject(*global);
 	global->reject();
+
+	last_relocate = propose_relocate;
       }
     }
 

@@ -35,6 +35,8 @@
 
 #include "genericinterface.hpp"
 
+#include "simulated_annealing_scales.hpp"
+
 extern "C" {
   #include "slog.h"
 };
@@ -45,7 +47,6 @@ public:
   typedef sphericalcoordinate<double> coord_t;
 
   globalS2Voronoi(const char *input,
-		  const char *initial_model,
 		  const char *prior_file,
 		  const char *hierarchical_prior_file,
 		  const char *position_prior_file,
@@ -149,24 +150,9 @@ public:
     
     model = new sphericalvoronoimodel<double>(logspace);
 
-    if (initial_model == nullptr) {
-
-      //
-      // Initialize to single cell sampled from prior
-      //
-      model->add_cell(coord_t(0.0, 0.0), prior->sample(random));
-
-    } else {
-
-      if (!model->load(initial_model)) {
-	throw GENERALVORONOIS2EXCEPTION("Failed to load initial model from %s", initial_model);
-      }
-
-      INFO("Loaded model with %d cells", model->ncells());
-
-    }
   }
 
+  
   void initialize_mpi(MPI_Comm _communicator, double _temperature)
   {
     MPI_Comm_dup(_communicator, &communicator);
@@ -195,6 +181,349 @@ public:
 
     if (mpi_offsets[size - 1] + mpi_counts[size - 1] != (int)data.obs.size()) {
       throw GENERALVORONOIS2EXCEPTION("Failed to distribute data points properly");
+    }
+  }
+
+  void initialize(const char *initial_model, int initial_cells)
+  {
+    if (initial_model == nullptr) {
+
+      if (communicator == MPI_COMM_NULL) {
+
+	for (int j = 0; j < initial_cells; j ++) {
+
+	
+	  double phi, theta;
+	  positionprior->sample(random, phi, theta);
+	  model->add_cell(globalS2Voronoi::coord_t(phi, theta),
+			  prior->sample(random));
+
+	}
+	
+      } else {
+
+	for (int j = 0; j < initial_cells; j ++) {
+
+	  double mp[3];
+
+	  if (rank == 0) {
+	    double phi, theta;
+	    positionprior->sample(random, phi, theta);
+
+	    double v = prior->sample(random);
+
+	    mp[0] = phi;
+	    mp[1] = theta;
+	    mp[2] = v;
+	  }
+
+	  MPI_Bcast(mp, 3, MPI_DOUBLE, 0, communicator);
+	    
+	  model->add_cell(globalS2Voronoi::coord_t(mp[0], mp[1]),
+			  mp[2]);
+
+	}
+      }
+    } else {
+    
+      if (initial_cells > 1) {
+	INFO("Warning: initial model file provided and initial cells specified: initial cells ignored");
+      }
+
+      if (!model->load(initial_model)) {
+	throw GENERALVORONOIS2EXCEPTION("Failed to load initial model from %s", initial_model);
+      }
+
+      INFO("Loaded model with %d cells", model->ncells());
+    }
+  }
+
+  double optimize_sa(int iterations, double Tmax, double acceptance, int verbose)
+  {
+    if (communicator == MPI_COMM_NULL) {
+
+      //
+      // Auto scaling for efficient jump sizes
+      //
+      double scale_factor = 1.0e-3;
+      
+      //
+      // Initial likelihood
+      //
+      double current_N = 0.0;
+      double current_P = likelihood(current_N, true);
+
+      //
+      // Prune unused model parameters
+      //
+      std::vector<bool> used(model->cells.size(), false);
+      for (auto &o : data.obs) {
+	for (auto &mi : o.idx) {
+	  used[mi] = true;
+	}
+      }
+      
+      int pruned_count = 0;
+      for (int j = used.size() - 1; j >= 0; j --) {
+	if (!used[j]) {
+	  model->cells.erase(model->cells.begin() + j);
+	  pruned_count ++;
+	}
+      }
+      
+      if (pruned_count > 0) {
+	printf("Pre  prune: %12.6f %6d\n", current_P, (int)used.size());
+	current_P = likelihood(current_N, true);
+	printf("Post prune: %12.6f %6d %d\n", current_P, (int)model->cells.size(), pruned_count);
+      }
+      
+      std::vector<double> scale(model->cells.size(), 1.0);
+      std::vector<int> local_proposed(model->cells.size(), 0);
+      std::vector<int> local_accepted(model->cells.size(), 0);
+      
+      int proposed = 0;
+      int accepted = 0;
+      
+      for (int i = 0; i < iterations; i ++) {
+	
+	double T = temperature_power(i, iterations, Tmax, 2.0);
+	
+	//
+	// Perturb model parameters
+	//
+	// If the perturbation violates prior bounds, we just keep going hoping
+	// that the next perturbation won't. The number of prior violations is
+	// counted which can be used as a diagnostic. (Proposal width is too large)
+	//
+	int j = 0;
+	for (auto &c : model->cells) {
+	  
+	  double oldv = c.v;
+	  double newv;
+	  double logpriorratio;
+	  
+	  if (prior->propose(random,
+			     T * scale[j],
+			     oldv,
+			     newv,
+			     logpriorratio)) {
+	    local_proposed[j] ++;
+	    proposed ++;
+	    
+	    c.v = newv;
+	    
+	    //
+	    // Compute perturbed likelihood
+	    //
+	    double proposed_N = 0.0;
+	    double proposed_P = likelihood(proposed_N, false);
+	    
+	    //
+	    // Accept/reject
+	    //
+	    double u = log(random.uniform());
+	    if (u < (current_P - proposed_P)/T) {
+	      //
+	      // Accept: set likelihood and keep model as is
+	      //
+	      current_P = proposed_P;
+	      accepted ++;
+	      local_accepted[j] ++;
+	      
+	    } else {
+	      //
+	      // Reject: restore old model
+	      //
+	      c.v = oldv;
+	    }
+	    
+	    //
+	    // Update adaptive step size
+	    //
+	    if (local_proposed[j] >= 10 && local_proposed[j] % 10 == 0) {
+	      
+	      double local_acceptance = (double)local_accepted[j]/(double)local_proposed[j];
+	      if (local_acceptance < 0.5) {
+		scale[j] *= (1.0 - scale_factor);
+	      } else {
+		scale[j] *= (1.0 + scale_factor);
+	      }
+	    }
+	    
+	  }
+	  
+	}
+	
+	
+	if (proposed > 0) {
+	  acceptance = (double)accepted/(double)proposed;
+	}
+	
+	if (verbose > 0 && (i + 1) % verbose == 0) {
+
+	  INFO("%6d %12.6f %10.6f (%8d/%8d)\n",
+	       i + 1,
+	       current_P,
+	       acceptance,
+	       accepted, proposed);
+	  
+	}
+	
+      }
+      
+      return current_P;
+    } else {
+
+      //
+      // Auto scaling for efficient jump sizes
+      //
+      double scale_factor = 1.0e-3;
+      
+      //
+      // Initial likelihood
+      //
+      double current_N = 0.0;
+      double current_P = likelihood(current_N, true);      
+
+      //
+      // Prune unused model parameters
+      //
+      std::vector<int> used(model->cells.size(), 0);
+      for (auto &o : data.obs) {
+	for (auto &mi : o.idx) {
+	  used[mi] = 1;
+	}
+      }
+
+      if (rank == 0) {
+	MPI_Reduce(MPI_IN_PLACE, used.data(), used.size(), MPI_INT, MPI_LOR, 0, communicator);
+      } else {
+	MPI_Reduce(used.data(), NULL, used.size(), MPI_INT, MPI_LOR, 0, communicator);
+      }
+      MPI_Bcast(used.data(), used.size(), MPI_INT, 0, communicator);
+
+      int pruned_count = 0;
+      for (int j = (int)(used.size() - 1); j >= 0; j --) {
+	if (used[j] == 0) {
+	  model->cells.erase(model->cells.begin() + j);
+	  pruned_count ++;
+	}
+      }
+
+      if (model->cells.size() == 0) {
+	throw GENERALVORONOIS2EXCEPTION("Pruned all cells!");
+      }
+
+      if (rank == 0 && pruned_count > 0) {
+	INFO("Pre  prune: %12.6f %6d\n", current_P, (int)used.size());
+	current_P = likelihood(current_N, true);
+	INFO("Post prune: %12.6f %6d %d\n", current_P, (int)model->cells.size(), pruned_count);
+      }
+
+      std::vector<double> scale(model->cells.size(), 1.0);
+      std::vector<int> local_proposed(model->cells.size(), 0);
+      std::vector<int> local_accepted(model->cells.size(), 0);
+      
+      int proposed = 0;
+      int accepted = 0;
+     
+	  
+      for (int i = 0; i < iterations; i ++) {
+
+	double T = temperature_power(i, iterations, Tmax, 2.0);
+
+	int j = 0;
+
+	for (auto &c : model->cells) {
+
+	  double oldv = c.v;
+	  double newv;
+	  double logpriorratio;
+	  
+	  if (rank == 0) {
+	    while (!prior->propose(random,
+				   T * scale[j],
+				   oldv,
+				   newv,
+				   logpriorratio)) {
+	      // Keep proposing until we get a valid proposal
+	    }
+					   
+	  }
+
+	  MPI_Bcast(&newv, 1, MPI_DOUBLE, 0, communicator);
+
+	  proposed ++;
+	  local_proposed[j] ++;
+	  c.v = newv;
+
+	  //
+	  // Compute perturbed likelihood
+	  //
+	  double proposed_N = 0.0;
+	  double proposed_P = likelihood(proposed_N, false);
+
+	  int accept;
+
+	  if (rank == 0) {
+	    double u = log(random.uniform());
+	    if (u < (current_P - proposed_P)/T) {
+	      accept = 1;
+	    } else {
+	      accept = 0;
+	    }
+	  }
+
+	  MPI_Bcast(&accept, 1, MPI_INT, 0, communicator);
+
+	  if (accept == 1) {
+	    current_P = proposed_P;
+	    accepted ++;
+	    local_accepted[j] ++;
+	    
+	  } else {
+	    //
+	    // Reject: restore old model
+	    //
+	    c.v = oldv;
+	  }
+	  
+	  if (rank == 0) {
+
+	    //
+	    // Update adaptive step size
+	    //
+	    if (local_proposed[j] >= 10 && local_proposed[j] % 10 == 0) {
+	      
+	      double local_acceptance = (double)local_accepted[j]/(double)local_proposed[j];
+	      if (local_acceptance < 0.5) {
+		scale[j] *= (1.0 - scale_factor);
+	      } else {
+		scale[j] *= (1.0 + scale_factor);
+	      }
+	    }
+
+	  }
+
+	  j ++;
+	}
+
+	if (proposed > 0) {
+	  acceptance = (double)accepted/(double)proposed;
+	}
+	
+	if (rank == 0 && verbose > 0 && (i + 1) % verbose == 0) {
+	  
+	  INFO("%6d %12.6f %10.6f (%8d/%8d)\n",
+	       i + 1,
+	       current_P,
+	       acceptance,
+	       accepted, proposed);
+	  
+	}
+      }	
+
+      return current_P;
     }
   }
 
@@ -307,29 +636,32 @@ public:
 	}
 	  
 	//
-	// Share predictions
+	// Collect predictions to root
 	//
-	MPI_Allgatherv(predictions.data() + mpi_offsets[rank],
-		       mpi_counts[rank],
-		       MPI_DOUBLE,
-		       predictions.data(),
-		       mpi_counts,
-		       mpi_offsets,
-		       MPI_DOUBLE,
-		       communicator);
+	MPI_Gatherv(predictions.data() + mpi_offsets[rank],
+		    mpi_counts[rank],
+		    MPI_DOUBLE,
+		    predictions.data(),
+		    mpi_counts,
+		    mpi_offsets,
+		    MPI_DOUBLE,
+		    0,
+		    communicator);
 
-	
-	int nobs = data.obs.size();
-	double hvalue = hierarchical->get(0);
 	double like;
-	if (gvs2_compute_likelihood_(&nobs,
-				     &hvalue,
-				     predictions.data(),
-				     residuals.data(),
-				     modelweights.data(),
-				     &like,
-				     &norm) < 0) {
-	  throw GENERALVORONOIS2EXCEPTION("Failed to compute likelihood");
+	
+	if (rank == 0) {
+	  int nobs = data.obs.size();
+	  double hvalue = hierarchical->get(0);
+	  if (gvs2_compute_likelihood_(&nobs,
+				       &hvalue,
+				       predictions.data(),
+				       residuals.data(),
+				       modelweights.data(),
+				       &like,
+				       &norm) < 0) {
+	    throw GENERALVORONOIS2EXCEPTION("Failed to compute likelihood");
+	  }
 	}
 
 	MPI_Bcast(&like, 1, MPI_DOUBLE, 0, communicator);

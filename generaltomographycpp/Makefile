@@ -1,6 +1,6 @@
 
 CXX=mpicxx
-CXXFLAGS=-c -g -Wall -I..
+CXXFLAGS=-c -g -Wall --std=c++11 -I..
 
 CXXFLAGS+=-O3
 

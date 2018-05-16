@@ -23,17 +23,8 @@
 #ifndef simulated_annealing_hpp
 #define simulated_annealing_hpp
 
+#include "simulated_annealing_scales.hpp"
 #include "globalS2Voronoi.hpp"
-
-double temperature_linear(int i, int n, double Tmax)
-{
-  return Tmax - (Tmax - 1.0) * (double)(i)/(double)(n - 1);
-}
-
-double temperature_power(int i, int n, double Tmax, double p)
-{
-  return Tmax - (Tmax - 1.0) * pow((double)(i)/(double)(n - 1), 1.0/p);
-}
 
 double
 simulated_annealing_optimize(globalS2Voronoi &global,

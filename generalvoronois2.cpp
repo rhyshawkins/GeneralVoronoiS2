@@ -279,7 +279,6 @@ int main(int argc, char *argv[])
   }
 
   global = new globalS2Voronoi(input,
-			       initial,
 			       prior,
 			       hierarchicalprior,
 			       positionprior,
@@ -292,29 +291,9 @@ int main(int argc, char *argv[])
 			       logspace);
 
   //
-  // Randomly initialize cells if requested
+  // Initialize cells
   //
-  if (initial == nullptr) {
-    if (initialcells > 1) {
-
-      //
-      // Initialise model with requested number of cells
-      //
-      for (int j = 1; j < initialcells; j ++) {
-
-	double phi, theta;
-	global->positionprior->sample(global->random, phi, theta);
-
-	global->model->add_cell(globalS2Voronoi::coord_t(phi, theta),
-				global->prior->sample(global->random));
-
-      }
-    }
-  } else {
-    if (initialcells > 1) {
-      printf("Warning: initial model file provided and initial cells specified: initial cells ignored\n");
-    }
-  }
+  global->initialize(initial, initialcells);
 
   current_norm = 0.0;
   current_likelihood = global->likelihood(current_norm, true);
@@ -326,21 +305,20 @@ int main(int argc, char *argv[])
   //
   if (optimizeiterations > 0) {
 
-    int failed;
-    double acceptance;
+    double acceptance = 0.0;
     
-    current_likelihood = simulated_annealing_optimize(*global,
-						      optimizeiterations,
-						      optimizetemperature,
-						      failed,
-						      acceptance);
+    current_likelihood = global->optimize_sa(optimizeiterations,
+					     optimizetemperature,
+					     acceptance,
+					     verbosity);
+
     if (current_likelihood < 0.0) {
       fprintf(stderr, "error: optimization failed\n");
       return -1;
     }
 
     printf("Optimized likelihood: %10.6f (%10.6f)\n", current_likelihood, current_norm);
-    printf("  %10.6f (%6d)\n", acceptance * 100.0, failed);
+    printf("  %10.6f\n", acceptance * 100.0);
   }
 
   int *khistogram = new int[global->maxcells + 1];

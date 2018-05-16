@@ -78,7 +78,7 @@ public:
       //
       
       p ++;
-      cell = random.uniform(model.ncells());
+      cell = random.uniform((int)model.ncells());
       
       //
       // Next get the active node

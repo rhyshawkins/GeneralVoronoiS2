@@ -124,3 +124,32 @@ results_checkerboard_opt/mean.txt : results_checkerboard_opt/ch.dat
 	-z 0 -Z 10 \
 	-T results_checkerboard_opt/stddev.txt \
 	-W 90 -H 45
+
+results_checkerboard_pt/ch.dat-000 : prior_values.txt \
+	prior_position.txt \
+	prior_hierarchical.txt \
+	synthetic_obs_checkerboard.txt
+	mkdir -p results_checkerboard_pt
+	mpirun -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-H prior_hierarchical.txt \
+	-T 1000 \
+	-t 10000 \
+	-v 10 \
+	-C 50 \
+	-z 100 \
+	-Z 5.0 \
+	-c 4
+
+results_checkerboard_pt_cont/ch.dat-000 : results_checkerboard_pt/ch.dat-000
+	mkdir -p results_checkerboard_pt_cont
+	mpirun -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt_cont/ \
+	-I results_checkerboard_pt/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-H prior_hierarchical.txt \
+	-T 1000 \
+	-t 10000 \
+	-v 10 \
+	-c 4
