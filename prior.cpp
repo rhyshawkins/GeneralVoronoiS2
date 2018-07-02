@@ -193,7 +193,8 @@ PriorProposal::load(const char *filename)
 
   fp = fopen(filename, "r");
   if (fp == NULL) {
-    fprintf(stderr, "PriorProposal::load: failed to open file for reading\n");
+    fprintf(stderr, "PriorProposal::load: failed to open file for reading: %s\n",
+	    filename);
     return nullptr;
   }
 

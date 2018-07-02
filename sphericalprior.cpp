@@ -234,7 +234,8 @@ SphericalPriorProposal::load(const char *filename)
 
   fp = fopen(filename, "r");
   if (fp == NULL) {
-    fprintf(stderr, "SphericalPriorProposal::load: failed to open file for reading\n");
+    fprintf(stderr, "SphericalPriorProposal::load: failed to open file for reading: %s\n",
+	    filename);
     return nullptr;
   }
 

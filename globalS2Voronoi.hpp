@@ -82,6 +82,9 @@ public:
       prior = new PriorProposal(p, pp);
     } else {
       prior = PriorProposal::load(prior_file);
+      if (prior == nullptr) {
+        throw GENERALVORONOIS2EXCEPTION("Failed to open prior/proposal file\n");
+      }
     }
 
     if (hierarchical_prior_file == nullptr) {
@@ -90,6 +93,9 @@ public:
       hierarchicalprior = new PriorProposal(p, pp);
     } else {
       hierarchicalprior = PriorProposal::load(hierarchical_prior_file);
+      if (hierarchicalprior == nullptr) {
+	throw GENERALVORONOIS2EXCEPTION("Failed to open hierarchical prior/proposal file\n");
+      }
     }
 
     if (position_prior_file == nullptr) {
@@ -98,6 +104,9 @@ public:
       positionprior = new SphericalPriorProposal(p, pp);
     } else {
       positionprior = SphericalPriorProposal::load(position_prior_file);
+      if (positionprior == nullptr) {
+	throw GENERALVORONOIS2EXCEPTION("Failed to open position prior/proposal file\n");
+      }
     }
 
     if (birthdeath_proposal_file == nullptr) {

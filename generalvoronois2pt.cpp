@@ -348,19 +348,26 @@ int main(int argc, char *argv[])
     mkrankpath(chain_id, initial, "finalmodel.txt", initial_model_filename);
     initial_model_ptr = initial_model_filename;
   }
-					    
-  global = new globalS2Voronoi(input,
-			       prior,
-			       hierarchicalprior,
-			       positionprior,
-			       birthdeathprior,
-			       maxcells,
-			       lambda,
-			       temperature,
-			       seed_base + seed_mult * mpi_rank,
-			       posterior,
-			       logspace);
 
+  try {
+    global = new globalS2Voronoi(input,
+				 prior,
+				 hierarchicalprior,
+				 positionprior,
+				 birthdeathprior,
+				 maxcells,
+				 lambda,
+				 temperature,
+				 seed_base + seed_mult * mpi_rank,
+				 posterior,
+				 logspace);
+  } catch (...) {
+    mkrankpath(mpi_rank, output, "log.txt", filename);
+    fprintf(stderr, "Initialization error, check log file for more info:\n  %s\n",
+	    filename);
+    return -1;
+  }
+  
   ValueS2Voronoi *value = new ValueS2Voronoi();
   MoveS2Voronoi *move = new MoveS2Voronoi();
   BirthGenericS2Voronoi *birth = new BirthGenericS2Voronoi(global->birthdeathvalueproposal,
