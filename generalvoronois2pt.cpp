@@ -584,6 +584,7 @@ int main(int argc, char *argv[])
       
   }
 
+  INFO("Finalize");
   MPI_Finalize();
 
   return 0;
