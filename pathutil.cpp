@@ -40,3 +40,12 @@ void mkrankpath(int rank, const char *prefix, const char *filename, char *path)
     sprintf(path, "%s-%03d", filename, rank);
   }
 }
+
+void mkrankoffsetpath(int rank, int offset, const char *prefix, const char *filename, char *path)
+{
+  if (prefix != nullptr) {
+    sprintf(path, "%s%s-%02d-%03d", prefix, filename, offset, rank);
+  } else {
+    sprintf(path, "%s-%02d-%03d", filename, offset, rank);
+  }
+}

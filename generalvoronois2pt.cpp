@@ -39,7 +39,7 @@
 
 typedef chainhistorywriterVoronoi<sphericalcoordinate<double>, double> chainhistorywriter_t;
 
-static char short_options[] = "i:I:o:P:H:M:B:D:T:S:t:l:v:b:pLc:K:C:z:Z:h";
+static char short_options[] = "i:I:o:P:H:M:B:D:T:S:E:O:t:l:v:b:pLc:K:C:z:Z:h";
 static struct option long_options[] = {
   {"input", required_argument, 0, 'i'},
   {"initial", required_argument, 0, 'I'},
@@ -51,6 +51,10 @@ static struct option long_options[] = {
   {"birth-death-prior", required_argument, 0, 'B'},
 
   {"max-cells", required_argument, 0, 'T'},
+  {"seed-base", required_argument, 0, 'S'},
+  {"seed-mult", required_argument, 0, 'E'},
+  {"seed-offset", required_argument, 0, 'O'},
+  
 
   {"total", required_argument, 0, 't'},
   {"lambda", required_argument, 0, 'l'},
@@ -101,6 +105,7 @@ int main(int argc, char *argv[])
 
   int seed_base;
   int seed_mult;
+  int seed_offset;
 
   bool posterior;
 
@@ -158,6 +163,7 @@ int main(int argc, char *argv[])
 
   seed_base = 983;
   seed_mult = 101;
+  seed_offset = 0;
 
   posterior = false;
 
@@ -311,7 +317,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  mkrankpath(mpi_rank, output, "log.txt", filename);
+  mkrankoffsetpath(mpi_rank, seed_offset, output, "log.txt", filename);
   if (slog_set_output_file(filename,
                            SLOG_FLAGS_CLEAR) < 0) {
     fprintf(stderr, "error: failed to redirect log file\n");
@@ -345,7 +351,7 @@ int main(int argc, char *argv[])
   const char *initial_model_ptr = nullptr;
   char initial_model_filename[1024];
   if (initial != nullptr) {
-    mkrankpath(chain_id, initial, "finalmodel.txt", initial_model_filename);
+    mkrankpath(chain_id + seed_offset, initial, "initialmodel.txt", initial_model_filename);
     initial_model_ptr = initial_model_filename;
   }
 					    
@@ -357,7 +363,7 @@ int main(int argc, char *argv[])
 			       maxcells,
 			       lambda,
 			       temperature,
-			       seed_base + seed_mult * mpi_rank,
+			       seed_base + seed_mult * (mpi_rank * seed_offset),
 			       posterior,
 			       logspace);
 
@@ -419,7 +425,7 @@ int main(int argc, char *argv[])
       khistogram[i] = 0;
     }
 
-    mkrankpath(chain_id, output, "ch.dat", filename);
+    mkrankpath(chain_id + seed_offset, output, "ch.dat", filename);
 
     history = new chainhistorywriter_t(filename,
 				       *(global->model),
@@ -548,7 +554,7 @@ int main(int argc, char *argv[])
     //
     // Save khistogram
     //
-    mkrankpath(chain_id, output, "khistogram.txt", filename);
+    mkrankpath(chain_id + seed_offset, output, "khistogram.txt", filename);
     FILE *fp = fopen(filename, "w");
     for (int i = 0; i <= global->maxcells; i ++) {
       fprintf(fp, "%d %d\n", i, khistogram[i]);
@@ -560,7 +566,7 @@ int main(int argc, char *argv[])
     
     delete history;
 
-    mkrankpath(chain_id, output, "finalmodel.txt", filename);
+    mkrankpath(chain_id + seed_offset, output, "finalmodel.txt", filename);
     if (!global->model->save(filename)) {
       throw GENERALVORONOIS2EXCEPTION("Failed to save final model\n");
     }
@@ -568,7 +574,7 @@ int main(int argc, char *argv[])
     //
     // Save residuals
     //
-    mkrankpath(chain_id, output, "residuals.txt", filename);
+    mkrankpath(chain_id + seed_offset, output, "residuals.txt", filename);
     fp = fopen(filename, "w");
     for (int i = 0; i < global->residual_size; i ++) {
       fprintf(fp, "%.9g\n", global->mean_residuals[i]);

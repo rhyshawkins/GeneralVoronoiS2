@@ -130,7 +130,7 @@ results_checkerboard_pt/ch.dat-000 : prior_values.txt \
 	prior_hierarchical.txt \
 	synthetic_obs_checkerboard.txt
 	mkdir -p results_checkerboard_pt
-	mpirun -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt/ \
+	mpirun --oversubscribe -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt/ \
 	-P prior_values.txt \
 	-M prior_position.txt \
 	-H prior_hierarchical.txt \
@@ -144,7 +144,7 @@ results_checkerboard_pt/ch.dat-000 : prior_values.txt \
 
 results_checkerboard_pt_cont/ch.dat-000 : results_checkerboard_pt/ch.dat-000
 	mkdir -p results_checkerboard_pt_cont
-	mpirun -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt_cont/ \
+	mpirun --oversubscribe -np 8 ../regressionvoronois2pt -i synthetic_obs_checkerboard.txt -o results_checkerboard_pt_cont/ \
 	-I results_checkerboard_pt/ \
 	-P prior_values.txt \
 	-M prior_position.txt \
@@ -155,7 +155,7 @@ results_checkerboard_pt_cont/ch.dat-000 : results_checkerboard_pt/ch.dat-000
 	-c 4
 
 results_checkerboard_pt_cont/mean.txt : results_checkerboard_pt_cont/ch.dat-000
-	mpirun -np 4 ../../postS2Voronoi_mean_mpi -i results_checkerboard_pt_cont/ch.dat -o $@ \
+	mpirun --oversubscribe -np 4 ../../postS2Voronoi_mean_mpi -i results_checkerboard_pt_cont/ch.dat -o $@ \
 	-t 10 -s 0 \
 	-z 0 -Z 10 \
 	-T results_checkerboard_pt_cont/stddev.txt \

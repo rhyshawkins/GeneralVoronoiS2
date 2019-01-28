@@ -27,4 +27,6 @@ void mkpath(const char *prefix, const char *filename, char *path);
 
 void mkrankpath(int rank, const char *prefix, const char *filename, char *path);
 
+void mkrankoffsetpath(int rank, int offset, const char *prefix, const char *filename, char *path);
+
 #endif // pathutil_hpp
