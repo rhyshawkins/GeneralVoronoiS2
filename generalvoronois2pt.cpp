@@ -225,6 +225,30 @@ int main(int argc, char *argv[])
       }
       break;
 
+    case 'S':
+      seed_base = atoi(optarg);
+      if (seed_base < 0) {
+	fprintf(stderr, "error: seed base must be 0 or more\n");
+	return -1;
+      }
+      break;
+      
+    case 'E':
+      seed_mult = atoi(optarg);
+      if (seed_mult < 0) {
+	fprintf(stderr, "error: seed mult must be 0 or more\n");
+	return -1;
+      }
+      break;
+
+    case 'O':
+      seed_offset = atoi(optarg);
+      if (seed_offset < 0) {
+	fprintf(stderr, "error: seed offset must be 0 or more\n");
+	return -1;
+      }
+      break;
+
     case 't':
       total = atoi(optarg);
       if (total < 1) {
