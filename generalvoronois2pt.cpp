@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
 				 maxcells,
 				 lambda,
 				 temperature,
-				 seed_base + seed_mult * mpi_rank,
+				 seed_base + seed_mult * (mpi_rank + seed_offset),
 				 posterior,
 				 logspace);
   } catch (...) {

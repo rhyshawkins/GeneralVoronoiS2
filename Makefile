@@ -83,6 +83,7 @@ EXAMPLES = generalregressioncpp/Makefile \
 	generaltomographycpp/generictomography.cpp \
 	generaltomographycpp/tomographyutil.hpp \
 	generaltomographycpp/example/Makefile \
+	generaltomographycpp/seedoffset_example/Makefile \
 	generalregressionf/Makefile \
 	generalregressionf/genericregression.f90 \
 	generalregressionf/example/Makefile \
@@ -106,9 +107,6 @@ TARGETS = postS2Voronoi_mean \
 	postS2Voronoi_likelihood \
 	postS2Voronoi_text
 
-documentation/manual.pdf : documentation/manual.tex
-	cd documentation && pdflatex manual.tex
-
 all : $(TARGETS)
 
 postS2Voronoi_mean : postS2Voronoi_mean.o $(OBJS)
@@ -122,6 +120,9 @@ postS2Voronoi_likelihood : postS2Voronoi_likelihood.o $(OBJS)
 
 postS2Voronoi_text : postS2Voronoi_text.o $(OBJS)
 	$(CXX) -o $@ postS2Voronoi_text.o $(OBJS) $(LIBS)
+
+documentation/manual.pdf : documentation/manual.tex
+	cd documentation && pdflatex manual.tex
 
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -o $*.o $*.cpp

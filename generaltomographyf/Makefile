@@ -14,7 +14,8 @@ BASEOBJS = \
 	../prior.o \
 	../rng.o \
 	../sphericalprior.o \
-	../globalS2Voronoi.o
+	../globalS2Voronoi.o \
+	../simulated_annealing_scales.o
 
 TDTBASE=../../TDTbase
 LIBS = -L$(TDTBASE)/log -llog \
