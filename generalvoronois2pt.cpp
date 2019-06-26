@@ -26,6 +26,8 @@
 
 #include <mpi.h>
 
+#include <unistd.h>
+
 #include "globalS2Voronoi.hpp"
 
 #include "perturbationcollectionS2Voronoi.hpp"
@@ -376,6 +378,15 @@ int main(int argc, char *argv[])
   char initial_model_filename[1024];
   if (initial != nullptr) {
     mkrankpath(chain_id + seed_offset, initial, "initialmodel.txt", initial_model_filename);
+
+    if (access(initial_model_filename, R_OK) < 0) {
+      INFO("No explicit initial model: %s", initial_model_filename);
+
+      mkrankpath(chain_id + seed_offset, initial, "finalmodel.txt", initial_model_filename);
+    } else {
+      INFO("Explicit initial model: %s", initial_model_filename);
+    }
+      
     initial_model_ptr = initial_model_filename;
   }
 

@@ -158,6 +158,15 @@ public:
 
     nearest(p, centre, index, v);
 
+    // if (v <= 0.0) {
+    //   for (auto &c : cells) {
+    // 	printf("  %10.6f\n", (double)c.v);
+    //   }
+      
+    //   throw GENERALVORONOIS2EXCEPTION("Value out of range: %f", (double)v);
+    // }
+      
+
     return v;
   }
 

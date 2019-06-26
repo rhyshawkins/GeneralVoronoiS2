@@ -100,6 +100,32 @@ results_constant/mean.txt : results_constant/ch.dat-000 results_constant/ch.dat-
 	-T results_constant/stddev.txt \
 	-W 180 -H 90
 
+results_constant_cont/ch.dat-000 : prior_values.txt \
+	prior_position.txt \
+	synthetic_obs_constant.txt \
+	results_constant/ch.dat-000
+	mkdir -p results_constant_cont
+	mpirun -np 1 ../tomographyvoronois2pt -i synthetic_obs_constant.txt -o results_constant_cont/ \
+	-I results_constant/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-T 10 \
+	-t 50000 -v 1000 \
+	-O 0 
+
+results_constant_cont/ch.dat-001 : prior_values.txt \
+	prior_position.txt \
+	synthetic_obs_constant.txt \
+	results_constant/ch.dat-001
+	mkdir -p results_constant_cont
+	mpirun -np 1 ../tomographyvoronois2pt -i synthetic_obs_constant.txt -o results_constant_cont/ \
+	-I results_constant/ \
+	-P prior_values.txt \
+	-M prior_position.txt \
+	-T 10 \
+	-t 50000 -v 1000 \
+	-O 1
+
 #
 # To output history of the likelihood/hierarchical/no. cells(k) to monitor convergence
 # Above inversion wasn't hierarchical. 

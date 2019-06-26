@@ -233,6 +233,9 @@ public:
 
 	}
       }
+
+      INFO("Initial model created with %d cells from prior", model->ncells());
+      
     } else {
     
       if (initial_cells > 1) {
@@ -243,7 +246,8 @@ public:
 	throw GENERALVORONOIS2EXCEPTION("Failed to load initial model from %s", initial_model);
       }
 
-      INFO("Loaded model with %d cells", model->ncells());
+      INFO("Loaded %s", initial_model);
+      INFO("Starting model has %d cells", model->ncells());
     }
   }
 
@@ -553,6 +557,7 @@ public:
 	      data.obs[i].idx[j] = -1;
 	      data.obs[i].values[j] = model->value_at_point(data.obs[i].points[j],
 							    data.obs[i].idx[j]);
+
 	    }
 	  } else {
 	    // If cache is ok, look up value by index
@@ -622,12 +627,20 @@ public:
 	    for (int j = 0; j < npoints; j ++) {
 	      data.obs[o].values[j] = model->value_at_point(data.obs[o].points[j],
 							    data.obs[o].idx[j]);
+
+	      // if (data.obs[o].values[j] <= 0.0) {
+	      // 	throw GENERALVORONOIS2EXCEPTION("Invalid point value (slow)");
+	      // }
 	    }
 
 	  } else {
 	    // If cache is ok, look up value by index
 	    for (int j = 0; j < npoints; j ++) {
 	      data.obs[o].values[j] = model->value_at_index(data.obs[o].idx[j]);
+	      
+	      // if (data.obs[o].values[j] <= 0.0) {
+	      // 	throw GENERALVORONOIS2EXCEPTION("Invalid point value (cache)");
+	      // }
 	    }
 	  }
 
