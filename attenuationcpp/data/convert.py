@@ -29,7 +29,7 @@ def save(filename, data):
     f.close()
     
     
-f = open('coreattenuation.txt', 'r')
+f = open('coreattenuation-2.txt', 'r')
 lines = f.readlines()
 f.close()
 
